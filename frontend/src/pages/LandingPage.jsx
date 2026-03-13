@@ -644,11 +644,21 @@ export default function LandingPage() {
             <Activity className="w-5 h-5 text-[#00ff88]" />
             <span className="font-black text-white">Stock<span className="text-[#00ff88]">Sage</span></span>
           </div>
-          <p className="text-gray-600 text-sm">© 2025 StockSage — AI-powered trading signals. Not financial advice.</p>
-          <div className="flex gap-6">
-            {['CrewAI', 'FastAPI', 'React', 'Groq'].map(t => (
-              <span key={t} className="text-gray-600 text-xs hover:text-gray-400 transition-colors">{t}</span>
-            ))}
+          <p className="text-gray-600 text-sm">© 2026 StockSage — AI-powered trading signals. Not financial advice.</p>
+          <div className="flex items-center gap-1.5 text-xs text-gray-600">
+            <span>Built by</span>
+            <a
+              href="https://shrijithsm.tech"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-[#00ff88] transition-colors font-medium"
+            >
+              Shrijith S Menon
+            </a>
+            <span className="text-gray-700">·</span>
+            <a href="https://linkedin.com/in/shrijithsm" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#00d4ff] transition-colors">LinkedIn</a>
+            <span className="text-gray-700">·</span>
+            <a href="https://github.com/ShrijithSM" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#a855f7] transition-colors">GitHub</a>
           </div>
         </div>
       </footer>

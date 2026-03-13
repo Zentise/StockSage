@@ -1,5 +1,8 @@
-const API_BASE = '/api';
-const WS_BASE = `ws://${window.location.hostname}:8000`;
+// const API_BASE = '/api';
+// const WS_BASE = `ws://${window.location.hostname}:8000`;
+
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const WS_BASE = import.meta.env.VITE_WS_BASE || `ws://${window.location.hostname}:8000`;
 
 export async function fetchSuggestions(market = 'india', category = 'all') {
   const res = await fetch(`${API_BASE}/suggestions?market=${market}&category=${category}`);

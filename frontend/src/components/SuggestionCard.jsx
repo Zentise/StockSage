@@ -15,8 +15,7 @@ export default function SuggestionCard({ suggestion, chartData, index = 0 }) {
   const displayPrice = entry;
   const currency = ticker?.endsWith('.NS') ? '₹' : '$';
 
-  const badgeClass = isBuy ? 'badge-buy' : isAvoid ? 'badge-avoid' : 'badge-sell';
-  const accentColor = isBuy ? 'bg-accent-green' : isAvoid ? 'bg-accent-yellow' : 'bg-accent-red';
+  const accentColor = isBuy ? '#00ff88' : isAvoid ? '#ffd700' : '#ff3355';
 
   return (
     <motion.div
@@ -24,11 +23,26 @@ export default function SuggestionCard({ suggestion, chartData, index = 0 }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
       onClick={() => navigate(`/stock/${encodeURIComponent(ticker)}`)}
-      className="card cursor-pointer group relative overflow-hidden"
+      whileHover={{ y: -6, scale: 1.01 }}
+      className="relative overflow-hidden rounded-xl p-4 cursor-pointer group"
+      style={{
+        background: '#0d0d15',
+        border: `1px solid rgba(255,255,255,0.06)`,
+        transition: 'border-color 0.3s, box-shadow 0.3s',
+      }}
+      onHoverStart={(e) => {
+        e.currentTarget.style.borderColor = `${accentColor}30`;
+        e.currentTarget.style.boxShadow = `0 0 30px ${accentColor}10`;
+      }}
+      onHoverEnd={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
     >
-      {/* Glow accent */}
+      {/* Neon top accent bar */}
       <div
-        className={`absolute top-0 left-0 right-0 h-[2px] ${accentColor}`}
+        className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl"
+        style={{ background: accentColor, boxShadow: `0 0 12px ${accentColor}80` }}
       />
 
       {/* Header: Name + Signal Badge */}
@@ -37,7 +51,10 @@ export default function SuggestionCard({ suggestion, chartData, index = 0 }) {
           <h3 className="text-white font-semibold text-sm truncate">{name}</h3>
           <p className="text-gray-500 text-xs font-mono">{ticker}</p>
         </div>
-        <span className={badgeClass}>
+        <span
+          className="px-3 py-1 rounded-full text-xs font-black"
+          style={{ color: accentColor, background: `${accentColor}18`, border: `1px solid ${accentColor}40` }}
+        >
           {signal}
         </span>
       </div>

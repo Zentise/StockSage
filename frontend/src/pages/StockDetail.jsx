@@ -157,10 +157,10 @@ export default function StockDetail({ market }) {
     <div className="max-w-7xl mx-auto">
       {/* Back button */}
       <button
-        onClick={() => navigate('/')}
-        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6 text-sm"
+        onClick={() => navigate('/dashboard')}
+        className="flex items-center gap-2 text-gray-400 hover:text-accent-green transition-colors mb-6 text-sm group"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         Back to Dashboard
       </button>
 

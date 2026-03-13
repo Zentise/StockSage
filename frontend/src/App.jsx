@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity } from 'lucide-react';
 import Home from './pages/Home';
 import StockDetail from './pages/StockDetail';
+import LandingPage from './pages/LandingPage';
 import LivePriceTicker from './components/LivePriceTicker';
 import MarketToggle from './components/MarketToggle';
 import SearchBar from './components/SearchBar';
@@ -27,7 +28,7 @@ function AppLayout() {
 
   const handleMarketToggle = useCallback((m) => {
     setMarket(m);
-    navigate('/');
+    navigate('/dashboard');
   }, [navigate]);
 
   return (
@@ -37,21 +38,30 @@ function AppLayout() {
         {/* Nav row */}
         <div className="flex items-center justify-between px-6 py-3">
           {/* Logo */}
-          <motion.div
-            className="flex items-center gap-2 cursor-pointer"
-            onClick={() => navigate('/')}
-            whileHover={{ scale: 1.02 }}
-          >
-            <div className="relative">
-              <Activity className="w-6 h-6 text-accent-green" />
-              <div className="absolute inset-0 w-6 h-6 text-accent-green animate-pulse-slow opacity-50">
-                <Activity className="w-6 h-6" />
+          <div className="flex items-center gap-4">
+            <motion.div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => navigate('/dashboard')}
+              whileHover={{ scale: 1.02 }}
+            >
+              <div className="relative">
+                <Activity className="w-6 h-6 text-accent-green" style={{ filter: 'drop-shadow(0 0 6px #00ff88)' }} />
+                <div className="absolute inset-0 w-6 h-6 text-accent-green animate-pulse-slow opacity-40">
+                  <Activity className="w-6 h-6" />
+                </div>
               </div>
-            </div>
-            <span className="text-lg font-bold text-white tracking-tight">
-              Stock<span className="text-accent-green">Sage</span>
-            </span>
-          </motion.div>
+              <span className="text-lg font-black text-white tracking-tight">
+                Stock<span className="text-accent-green" style={{ textShadow: '0 0 12px rgba(0,255,136,0.5)' }}>Sage</span>
+              </span>
+            </motion.div>
+            <motion.button
+              onClick={() => navigate('/')}
+              whileHover={{ scale: 1.05 }}
+              className="hidden sm:flex items-center gap-1 text-gray-600 hover:text-gray-400 text-xs transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+            >
+              ← Home
+            </motion.button>
+          </div>
 
           {/* Search */}
           <div className="hidden md:block w-80">
@@ -69,8 +79,9 @@ function AppLayout() {
       {/* Main content */}
       <main className="flex-1 px-6 py-6">
         <Routes>
-          <Route path="/" element={<Home market={market} />} />
+          <Route path="/dashboard" element={<Home market={market} />} />
           <Route path="/stock/:ticker" element={<StockDetail market={market} />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
 
@@ -87,7 +98,10 @@ function AppLayout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppLayout />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/*" element={<AppLayout />} />
+      </Routes>
     </BrowserRouter>
   );
 }

@@ -9,55 +9,60 @@
     box-sizing: border-box;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background-color: #0a0a0a;
+    background-color: #050507;
     color: #ffffff;
     overflow-x: hidden;
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0a0a;
+    background: #050507;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #333;
+    background: #1a1a2e;
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: #2a2a4e;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-bg-card border border-bg-border rounded-xl p-4 transition-all duration-200;
+    @apply bg-bg-card border border-bg-border rounded-xl p-4 transition-all duration-300;
   }
 
   .card:hover {
-    @apply bg-bg-hover border-gray-600;
+    @apply bg-bg-hover border-accent-green/20;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.06);
   }
 
   .badge-buy {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-green/20 text-accent-green border border-accent-green/30;
+    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-green/15 text-accent-green border border-accent-green/30;
   }
 
   .badge-sell {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-red/20 text-accent-red border border-accent-red/30;
+    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-red/15 text-accent-red border border-accent-red/30;
   }
 
   .badge-hold {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/30;
+    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30;
   }
 
   .badge-avoid {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/30;
+    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30;
   }
 
   .price-up {
@@ -66,5 +71,71 @@
 
   .price-down {
     @apply text-accent-red;
+  }
+
+  /* Neon glow utilities */
+  .glow-green {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.35), 0 0 60px rgba(0, 255, 136, 0.1);
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.35), 0 0 60px rgba(168, 85, 247, 0.1);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.35), 0 0 60px rgba(0, 212, 255, 0.1);
+  }
+
+  .glow-pink {
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.35), 0 0 60px rgba(255, 0, 128, 0.1);
+  }
+
+  .text-glow-green {
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.6), 0 0 40px rgba(0, 255, 136, 0.3);
+  }
+
+  .text-glow-purple {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #00ff88 0%, #00d4ff 50%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-purple {
+    background: linear-gradient(135deg, #a855f7 0%, #00d4ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shimmer loading */
+  .shimmer {
+    background: linear-gradient(90deg, #0d0d15 25%, #1a1a2e 50%, #0d0d15 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* Grid background pattern */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Neon border */
+  .neon-border-green {
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.1), inset 0 0 15px rgba(0, 255, 136, 0.05);
+  }
+
+  .neon-border-purple {
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.1), inset 0 0 15px rgba(168, 85, 247, 0.05);
   }
 }

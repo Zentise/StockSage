@@ -82,6 +82,24 @@ export default function Home({ market }) {
 
   return (
     <div className="flex-1">
+      {/* Dashboard Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-6"
+      >
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-2 h-2 rounded-full bg-accent-green animate-pulse" style={{ boxShadow: '0 0 8px #00ff88' }} />
+          <h1 className="text-2xl font-black text-white">
+            AI Market <span className="text-accent-green">Dashboard</span>
+          </h1>
+        </div>
+        <p className="text-gray-500 text-sm ml-5">
+          Real-time signals powered by multi-agent AI — {market === 'india' ? '🇮🇳 NSE India' : '🇺🇸 US Markets'}
+        </p>
+      </motion.div>
+
       {/* Market Closed Banner */}
       <AnimatePresence>
         {!marketOpen && (

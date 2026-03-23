@@ -81,7 +81,7 @@ app.add_middleware(
 
 # --- REST Endpoints ---
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     return {"status": "ok", "service": "StockSage"}
 

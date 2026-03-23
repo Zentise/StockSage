@@ -1,5 +1,7 @@
 """Technical indicator calculation tools using ta library."""
 
+from datetime import datetime
+import pytz
 import pandas as pd
 import numpy as np
 import ta
@@ -138,20 +140,42 @@ def detect_candlestick_patterns(df: pd.DataFrame) -> list[str]:
     return patterns
 
 
-def compute_entry_sl_target(indicators: dict, signal: str, atr_multiplier: float = 1.5) -> dict:
-    """Calculate entry, stop-loss, and target based on indicators and signal direction."""
+def compute_entry_sl_target(indicators: dict, signal: str, category: str = "intraday") -> dict:
+    """Calculate entry, stop-loss, and target based on category timeframe."""
     price = indicators.get("current_price", 0)
     atr = indicators.get("atr", price * 0.02)
 
+    # ATR multipliers per category — intraday must be tight
+    multipliers = {
+        "intraday":    {"sl": 0.3, "target": 0.6},
+        "fno":         {"sl": 0.5, "target": 1.0},
+        "short_term":  {"sl": 1.0, "target": 2.0},
+        "long_term":   {"sl": 1.5, "target": 3.0},
+        "commodities": {"sl": 0.5, "target": 1.0},
+    }
+
+    m = multipliers.get(category, multipliers["short_term"])
+
     if signal == "BUY":
-        entry = price
-        sl = round(price - atr * atr_multiplier, 2)
-        target = round(price + atr * atr_multiplier * 2, 2)  # R:R = 1:2
+        entry  = price
+        sl     = round(price - atr * m["sl"], 2)
+        target = round(price + atr * m["target"], 2)
     else:  # SELL
-        entry = price
-        sl = round(price + atr * atr_multiplier, 2)
-        target = round(price - atr * atr_multiplier * 2, 2)
+        entry  = price
+        sl     = round(price + atr * m["sl"], 2)
+        target = round(price - atr * m["target"], 2)
 
     rr = round(abs(target - entry) / abs(sl - entry), 1) if abs(sl - entry) > 0 else 0
 
     return {"entry": entry, "sl": sl, "target": target, "rr_ratio": str(rr)}
+
+
+def get_signal_timestamp(market: str = "india") -> dict:
+    """Returns formatted timestamp for when the signal was generated."""
+    tz = pytz.timezone("Asia/Kolkata") if market == "india" else pytz.timezone("America/New_York")
+    now = datetime.now(tz)
+    return {
+        "generated_at": now.strftime("%d %b %Y, %I:%M %p"),
+        "timezone": "IST" if market == "india" else "EST",
+        "timestamp_epoch": int(now.timestamp())
+    }

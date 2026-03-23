@@ -18,7 +18,7 @@ except Exception:          # ImportError / ModuleNotFoundError
 from groq import Groq
 
 from backend.tools.market_scanner import scan_market, scan_commodities
-from backend.tools.indicator_tools import compute_indicators, compute_entry_sl_target, detect_ema_crossover, detect_candlestick_patterns
+from backend.tools.indicator_tools import compute_indicators, compute_entry_sl_target, detect_ema_crossover, detect_candlestick_patterns, get_signal_timestamp
 from backend.tools.yfinance_tools import get_historical_data, get_stock_info, get_stock_news
 from backend.tools.sentiment_tools import score_sentiment_simple
 from backend.data.nse_stocks import TICKER_NAME_MAP as NSE_NAMES
@@ -159,9 +159,9 @@ def build_signal_from_data(ticker: str, market: str) -> dict | None:
         signal = "BUY" if bullish_score >= bearish_score else "SELL"
         confidence = min(95, max(30, (max(bullish_score, bearish_score) * 12) + 20))
 
-        levels = compute_entry_sl_target(indicators, signal)
-
         category, timeframe = categorize_signal(ticker, indicators, market)
+
+        levels = compute_entry_sl_target(indicators, signal, category=category)
 
         # In delivery-based categories (short_term, long_term) you can't short-sell.
         # Convert SELL to AVOID so users know to stay out, not to short.
@@ -194,6 +194,7 @@ def build_signal_from_data(ticker: str, market: str) -> dict | None:
             "top_headline": top_headline,
             "timeframe": timeframe,
             "indicators": indicators,
+            **get_signal_timestamp(market),
         }
     except Exception as e:
         logger.error(f"Failed to build signal for {ticker}: {e}")

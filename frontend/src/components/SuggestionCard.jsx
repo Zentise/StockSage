@@ -8,12 +8,20 @@ export default function SuggestionCard({ suggestion, chartData, index = 0 }) {
   const {
     ticker, name, signal, entry, sl, target, rr_ratio,
     confidence, strategy, top_headline, timeframe, category, sentiment,
+    generated_at, timezone, timestamp_epoch,
   } = suggestion;
 
   const isBuy = signal === 'BUY';
   const isAvoid = signal === 'AVOID';
   const displayPrice = entry;
   const currency = ticker?.endsWith('.NS') ? '₹' : '$';
+
+  const getAge = (epoch) => {
+    const diff = Math.floor((Date.now() / 1000) - epoch);
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  };
 
   const accentColor = isBuy ? '#00ff88' : isAvoid ? '#ffd700' : '#ff3355';
 
@@ -153,6 +161,19 @@ export default function SuggestionCard({ suggestion, chartData, index = 0 }) {
           📰 {top_headline}
         </p>
       )}
+
+      {/* Signal timestamp */}
+      <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+        <span>🕐 {generated_at} {timezone}</span>
+        <span className="text-gray-600">·</span>
+        <span className={
+          timestamp_epoch && (Date.now() / 1000 - timestamp_epoch) > 3600
+            ? "text-red-400"
+            : "text-green-400"
+        }>
+          {timestamp_epoch ? getAge(timestamp_epoch) : ""}
+        </span>
+      </div>
     </motion.div>
   );
 }

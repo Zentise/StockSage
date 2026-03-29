@@ -23,6 +23,7 @@ from backend.tools.yfinance_tools import get_historical_data, get_stock_info, ge
 from backend.tools.sentiment_tools import score_sentiment_simple
 from backend.data.nse_stocks import TICKER_NAME_MAP as NSE_NAMES
 from backend.data.nyse_stocks import TICKER_NAME_MAP as US_NAMES, COMMODITY_NAME_MAP
+from backend.market_hours import is_market_open
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +68,8 @@ def categorize_signal(ticker: str, indicators: dict, market: str) -> tuple[str, 
 
     atr_pct = (atr / price) if atr else 0
 
-    # Intraday: high daily volatility — big moves suit day-trading / scalping
-    if atr_pct > 0.03:
+    # Intraday: only when the market is currently tradable.
+    if atr_pct > 0.03 and is_market_open(market):
         return "intraday", "Today"
 
     # F&O: strong directional momentum — trade via derivatives (puts/calls/futures)

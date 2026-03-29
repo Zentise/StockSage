@@ -9,6 +9,7 @@ import threading
 from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Ensure project root is on sys.path so "backend.xxx" imports resolve
 # regardless of which directory uvicorn is launched from.
@@ -32,6 +33,7 @@ from backend.tools.indicator_tools import compute_indicators
 from backend.tools.sentiment_tools import get_market_news
 from backend.data.nse_stocks import ALL_NSE, INDICES as NSE_INDICES, TICKER_NAME_MAP as NSE_NAMES
 from backend.data.nyse_stocks import ALL_US, INDICES as US_INDICES, TICKER_NAME_MAP as US_NAMES, COMMODITY_NAME_MAP, COMMODITIES
+from backend.market_hours import is_market_open, is_indian_trading_holiday
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("stocksage")
@@ -40,32 +42,88 @@ logger = logging.getLogger("stocksage")
 _scan_cache: dict[str, list[dict]] = {"india": [], "us": []}
 _last_scan_time: dict[str, str] = {"india": "", "us": ""}
 _scan_in_progress: dict[str, bool] = {"india": False, "us": False}
+_periodic_scan_task: asyncio.Task | None = None
+
+
+def _market_timezone(market: str) -> ZoneInfo:
+    return ZoneInfo("Asia/Kolkata") if market == "india" else ZoneInfo("America/New_York")
+
+
+def _filter_non_tradable_categories(signals: list[dict], market: str) -> list[dict]:
+    # Never show intraday ideas when the market is closed (weekends/holidays/off-hours).
+    if is_market_open(market):
+        return signals
+    return [s for s in signals if s.get("category") != "intraday"]
+
+
+def _run_scan_for_market(market: str) -> list[dict]:
+    _scan_in_progress[market] = True
+    try:
+        signals = run_full_scan(market)
+        filtered_signals = _filter_non_tradable_categories(signals, market)
+        _scan_cache[market] = filtered_signals
+        _last_scan_time[market] = datetime.now(_market_timezone(market)).strftime("%Y-%m-%d %H:%M:%S")
+        return filtered_signals
+    finally:
+        _scan_in_progress[market] = False
 
 
 def _startup_scan():
     """Background scan on startup to pre-populate data."""
     for m in ("india", "us"):
         try:
-            _scan_in_progress[m] = True
             logger.info(f"Startup scan [{m}] starting...")
-            signals = run_full_scan(m)
+            signals = _run_scan_for_market(m)
             if signals:
-                _scan_cache[m] = signals
-                _last_scan_time[m] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 logger.info(f"Startup scan [{m}]: {len(signals)} signals")
             else:
                 logger.info(f"Startup scan [{m}]: no signals found")
         except Exception as e:
             logger.error(f"Startup scan [{m}] failed: {e}")
-        finally:
-            _scan_in_progress[m] = False
+
+
+async def _periodic_scan_loop():
+    interval_seconds = int(os.getenv("STOCKSAGE_SCAN_INTERVAL_SECONDS", "300"))
+    # Longer sleep when both markets are closed (nights/weekends/holidays) to
+    # avoid hammering yfinance for data that won't have changed.
+    off_hours_interval = int(os.getenv("STOCKSAGE_OFF_HOURS_INTERVAL_SECONDS", "1800"))
+    await asyncio.sleep(15)  # let startup settle first
+    while True:
+        any_market_open = False
+        for market in ("india", "us"):
+            if _scan_in_progress.get(market):
+                continue
+            market_currently_open = is_market_open(market)
+            # Always scan if market is open or cache is empty (first run / stale).
+            if market_currently_open or not _scan_cache.get(market):
+                any_market_open = any_market_open or market_currently_open
+                try:
+                    logger.info(f"Periodic scan [{market}] starting...")
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, _run_scan_for_market, market)
+                    logger.info(f"Periodic scan [{market}] complete")
+                except Exception as e:
+                    logger.error(f"Periodic scan [{market}] failed: {e}")
+            else:
+                logger.debug(f"Periodic scan [{market}] skipped — market closed, cache populated")
+
+        sleep_for = interval_seconds if any_market_open else off_hours_interval
+        await asyncio.sleep(sleep_for)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _periodic_scan_task
     logger.info("StockSage starting up...")
     threading.Thread(target=_startup_scan, daemon=True).start()
+    _periodic_scan_task = asyncio.create_task(_periodic_scan_loop())
     yield
+    if _periodic_scan_task:
+        _periodic_scan_task.cancel()
+        try:
+            await _periodic_scan_task
+        except asyncio.CancelledError:
+            pass
     logger.info("StockSage shut down.")
 
 
@@ -89,14 +147,17 @@ async def health():
 @app.get("/suggestions")
 async def get_suggestions(market: str = Query("india", regex="^(india|us)$"), category: str = Query("all")):
     """Return cached stock suggestions. Use /scan to refresh."""
-    suggestions = _scan_cache.get(market, [])
+    market_is_open = is_market_open(market)
+    is_holiday = is_indian_trading_holiday() if market == "india" else False
+    suggestions = _filter_non_tradable_categories(_scan_cache.get(market, []), market)
 
     if category != "all":
         suggestions = [s for s in suggestions if s.get("category") == category]
 
     return {
         "market": market,
-        "market_open": True,
+        "market_open": market_is_open,
+        "is_holiday": is_holiday,
         "last_scan": _last_scan_time.get(market, ""),
         "scanning": _scan_in_progress.get(market, False),
         "category": category,
@@ -194,12 +255,8 @@ async def trigger_scan(market: str = Query("india", regex="^(india|us)$")):
                 "scanning": True, "suggestions": _scan_cache.get(market, [])}
 
     loop = asyncio.get_event_loop()
-    _scan_in_progress[market] = True
     try:
-        signals = await loop.run_in_executor(None, run_full_scan, market)
-        if signals:
-            _scan_cache[market] = signals
-            _last_scan_time[market] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        signals = await loop.run_in_executor(None, _run_scan_for_market, market)
         return {"market": market, "count": len(signals), "suggestions": signals}
     finally:
         _scan_in_progress[market] = False

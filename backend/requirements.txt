@@ -13,5 +13,6 @@ aiohttp==3.10.5
 cachetools==5.5.0
 pydantic==2.9.2
 pytz
+holidays==0.74
 # Optional — CrewAI (requires Linux/Mac; uvloop does not build on Windows)
 # pip install crewai==0.80.0 crewai-tools==0.14.0

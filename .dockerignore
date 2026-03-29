@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Environment — never bake secrets into the image
+.env
+*.env
+
+# Dev / tooling
+.git/
+.github/
+.vscode/
+*.md
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

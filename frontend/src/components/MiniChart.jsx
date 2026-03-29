@@ -34,10 +34,13 @@ export default function MiniChart({ data, width = 160, height = 50, color = '#00
       crosshairMarkerVisible: false,
     });
 
-    const chartData = data.map((d) => ({
-      time: d.time,
-      value: d.close,
-    }));
+    // Deduplicate by time (keep last occurrence) then sort ascending —
+    // lightweight-charts requires strictly ascending unique timestamps.
+    const seen = new Map();
+    data.forEach((d) => seen.set(d.time, d.close));
+    const chartData = Array.from(seen.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([time, value]) => ({ time, value }));
 
     series.setData(chartData);
     chart.timeScale().fitContent();

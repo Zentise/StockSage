@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity } from 'lucide-react';
@@ -9,6 +9,32 @@ import LivePriceTicker from './components/LivePriceTicker';
 import MarketToggle from './components/MarketToggle';
 import SearchBar from './components/SearchBar';
 import { fetchIndices } from './api';
+
+// Error boundary
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null, hasError: false };
+  }
+  static getDerivedStateFromError(error) {
+    return { error, hasError: true };
+  }
+  componentDidCatch(error) {
+    console.error('App error:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', color: '#fff', background: '#050507', minHeight: '100vh' }}>
+          <h1>App Error</h1>
+          <p>{this.state.error?.message}</p>
+          <p style={{ color: '#999', fontSize: '12px', marginTop: '10px' }}>{this.state.error?.stack}</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function AppLayout() {
   const [market, setMarket] = useState('india');
@@ -97,11 +123,13 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/*" element={<AppLayout />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/*" element={<AppLayout />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

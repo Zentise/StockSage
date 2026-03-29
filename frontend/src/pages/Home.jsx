@@ -15,6 +15,7 @@ export default function Home({ market }) {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [marketOpen, setMarketOpen] = useState(true);
+  const [isHoliday, setIsHoliday] = useState(false);
   const [lastScan, setLastScan] = useState('');
   const pollRef = useRef(null);
 
@@ -30,6 +31,7 @@ export default function Home({ market }) {
       setAllSuggestions(all);
       setSuggestions(category === 'all' ? all : all.filter(s => s.category === category));
       setMarketOpen(sugData.market_open);
+      setIsHoliday(sugData.is_holiday || false);
       setLastScan(sugData.last_scan || '');
       setScanning(sugData.scanning || false);
       setNews(newsData.news || []);
@@ -100,19 +102,25 @@ export default function Home({ market }) {
         </p>
       </motion.div>
 
-      {/* Market Closed Banner */}
+      {/* Market Closed / Holiday Banner */}
       <AnimatePresence>
         {!marketOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-accent-yellow/10 border border-accent-yellow/20 rounded-lg px-4 py-2.5 mb-4 flex items-center gap-2"
+            className={`border rounded-lg px-4 py-2.5 mb-4 flex items-center gap-2 ${
+              isHoliday
+                ? 'bg-red-500/10 border-red-500/20'
+                : 'bg-accent-yellow/10 border-accent-yellow/20'
+            }`}
           >
-            <AlertTriangle className="w-4 h-4 text-accent-yellow flex-shrink-0" />
-            <span className="text-xs text-accent-yellow">
-              Market Closed — Showing last session data
-              {lastScan && ` (${lastScan})`}
+            <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${isHoliday ? 'text-red-400' : 'text-accent-yellow'}`} />
+            <span className={`text-xs ${isHoliday ? 'text-red-400' : 'text-accent-yellow'}`}>
+              {isHoliday
+                ? `Trading Holiday — No intraday calls today. Showing swing/F&O picks from last session${lastScan ? ` (${lastScan})` : ''}.`
+                : `Market Closed — Showing last session data${lastScan ? ` (${lastScan})` : ''}.`
+              }
             </span>
           </motion.div>
         )}

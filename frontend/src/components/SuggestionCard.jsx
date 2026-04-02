@@ -1,178 +1,251 @@
-import { motion } from 'framer-motion';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Clock, Zap, Target, Shield } from 'lucide-react';
-import MiniChart from './MiniChart';
+import { motion } from 'framer-motion';
+import Sparkline from './Sparkline';
 
-export default function SuggestionCard({ suggestion, chartData, index = 0 }) {
+const getAge = (epoch) => {
+  if (!epoch) return '';
+  const diff = Math.floor(Date.now() / 1000 - epoch);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
+};
+
+const signalStyles = {
+  BUY: {
+    stripe: 'var(--green)',
+    bg: 'rgba(0,200,150,0.12)',
+    color: 'var(--green)',
+    border: 'rgba(0,200,150,0.25)',
+    sparkline: '#00c896',
+  },
+  SELL: {
+    stripe: 'var(--red)',
+    bg: 'rgba(255,69,96,0.12)',
+    color: 'var(--red)',
+    border: 'rgba(255,69,96,0.25)',
+    sparkline: '#ff4560',
+  },
+  AVOID: {
+    stripe: 'var(--orange)',
+    bg: 'rgba(255,140,0,0.12)',
+    color: 'var(--orange)',
+    border: 'rgba(255,140,0,0.25)',
+    sparkline: '#ff8c00',
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.05, duration: 0.3, ease: 'easeOut' },
+  }),
+};
+
+export default function SuggestionCard({ card, index = 0 }) {
   const navigate = useNavigate();
-  const {
-    ticker, name, signal, entry, sl, target, rr_ratio,
-    confidence, strategy, top_headline, timeframe, category, sentiment,
-    generated_at, timezone, timestamp_epoch,
-  } = suggestion;
+  const signal = (card.signal || card.action || 'BUY').toUpperCase();
+  const style = signalStyles[signal] || signalStyles.BUY;
+  const isStale = card.timestamp_epoch && (Date.now() / 1000 - card.timestamp_epoch) > 3600;
+  const age = getAge(card.timestamp_epoch);
 
-  const isBuy = signal === 'BUY';
-  const isAvoid = signal === 'AVOID';
-  const displayPrice = entry;
-  const currency = ticker?.endsWith('.NS') ? '₹' : '$';
+  const price = card.price || card.ltp || card.current_price || 0;
+  const changePct = card.change_pct ?? card.pct_change ?? 0;
+  const entry = card.entry || card.entry_price || price;
+  const stopLoss = card.stop_loss || card.sl || 0;
+  const target = card.target || card.target_price || 0;
+  const confidence = card.confidence || card.confidence_score || 0;
+  const strategy = card.strategy || card.reason || '';
+  const rr = card.risk_reward || card.rr || '';
+  const ticker = card.ticker || card.symbol || '';
+  const companyName = card.company_name || card.name || '';
+  const exchange = card.exchange || '';
+  const timestamp = card.timestamp || '';
+  const sparkData = card.sparkline || card.price_history || [];
 
-  const getAge = (epoch) => {
-    const diff = Math.floor((Date.now() / 1000) - epoch);
-    if (diff < 60) return "Just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    return `${Math.floor(diff / 3600)}h ago`;
+  const currencySymbol = exchange?.includes('NS') || exchange?.includes('BO') ? '₹' : '$';
+
+  const formatPrice = (p) => {
+    if (!p || p === 0) return '-';
+    return `${currencySymbol}${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
-
-  const accentColor = isBuy ? '#00ff88' : isAvoid ? '#ffd700' : '#ff3355';
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
-      onClick={() => navigate(`/stock/${encodeURIComponent(ticker)}`)}
-      whileHover={{ y: -6, scale: 1.01 }}
-      className="relative overflow-hidden rounded-xl p-4 cursor-pointer group"
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className="rounded-md cursor-pointer transition-all duration-200"
       style={{
-        background: '#0d0d15',
-        border: `1px solid rgba(255,255,255,0.06)`,
-        transition: 'border-color 0.3s, box-shadow 0.3s',
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        overflow: 'hidden',
+      }}
+      whileHover={{
+        y: -2,
+        transition: { duration: 0.2 },
       }}
       onHoverStart={(e) => {
-        e.currentTarget.style.borderColor = `${accentColor}30`;
-        e.currentTarget.style.boxShadow = `0 0 30px ${accentColor}10`;
+        e.currentTarget.style.borderColor = 'var(--border2)';
+        e.currentTarget.style.background = '#161616';
       }}
       onHoverEnd={(e) => {
-        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.background = 'var(--card)';
       }}
+      onClick={() => navigate(`/stock/${encodeURIComponent(ticker)}?category=${encodeURIComponent(card.category || '')}`)}
     >
-      {/* Neon top accent bar */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl"
-        style={{ background: accentColor, boxShadow: `0 0 12px ${accentColor}80` }}
-      />
+      {/* Top color stripe */}
+      <div className="h-[2px]" style={{ background: style.stripe }} />
 
-      {/* Header: Name + Signal Badge */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-white font-semibold text-sm truncate">{name}</h3>
-          <p className="text-gray-500 text-xs font-mono">{ticker}</p>
-        </div>
-        <span
-          className="px-3 py-1 rounded-full text-xs font-black"
-          style={{ color: accentColor, background: `${accentColor}18`, border: `1px solid ${accentColor}40` }}
-        >
-          {signal}
-        </span>
-      </div>
-
-      {/* Price */}
-      <div className="flex items-baseline gap-2 mb-3">
-        <span className="text-xl font-mono font-bold text-white">
-          {currency}{displayPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-      </div>
-
-      {/* Mini Chart */}
-      {chartData && chartData.length > 0 && (
-        <div className="mb-3">
-          <MiniChart
-            data={chartData}
-            color={isBuy ? '#00ff88' : '#ff3355'}
-            width={240}
-            height={45}
-          />
-        </div>
-      )}
-
-      {/* Entry / SL / Target */}
-      <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
-        <div className="bg-white/5 rounded-lg p-2 text-center">
-          <div className="text-gray-500 mb-0.5">Entry</div>
-          <div className="font-mono font-semibold text-white">
-            {currency}{entry?.toFixed(2)}
+      <div className="p-4">
+        {/* Header: Ticker + badge */}
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <h3
+              className="text-[22px] leading-tight"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              {ticker}
+            </h3>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
+              {companyName}{exchange ? ` · ${exchange}` : ''}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <span
+              className="px-2.5 py-1 rounded text-[10px] uppercase font-medium tracking-wider"
+              style={{
+                background: style.bg,
+                color: style.color,
+                border: `1px solid ${style.border}`,
+              }}
+            >
+              {signal}
+            </span>
+            {card.category && (
+              <span
+                className="px-2 py-0.5 rounded text-[9px] uppercase tracking-wider"
+                style={{ background: 'rgba(201,168,76,0.08)', color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.15)' }}
+              >
+                {card.category.replace('_', ' ')}
+              </span>
+            )}
           </div>
         </div>
-        <div className="bg-white/5 rounded-lg p-2 text-center">
-          <div className="text-gray-500 mb-0.5">SL</div>
-          <div className="font-mono font-semibold text-accent-red">
-            {currency}{sl?.toFixed(2)}
-          </div>
-        </div>
-        <div className="bg-white/5 rounded-lg p-2 text-center">
-          <div className="text-gray-500 mb-0.5">Target</div>
-          <div className="font-mono font-semibold text-accent-green">
-            {currency}{target?.toFixed(2)}
-          </div>
-        </div>
-      </div>
 
-      {/* Badges row */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[10px] text-gray-300 border border-white/10">
-          <Target className="w-3 h-3" /> R:R {rr_ratio}
-        </span>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[10px] text-gray-300 border border-white/10">
-          <Clock className="w-3 h-3" /> {timeframe}
-        </span>
-        {sentiment && (
+        {/* Price */}
+        <div className="mt-3 flex items-baseline gap-2">
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] border ${
-              sentiment === 'positive'
-                ? 'bg-accent-green/10 text-accent-green border-accent-green/20'
-                : sentiment === 'negative'
-                ? 'bg-accent-red/10 text-accent-red border-accent-red/20'
-                : 'bg-white/5 text-gray-400 border-white/10'
-            }`}
+            className="text-xl"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
           >
-            {sentiment}
+            {formatPrice(price)}
           </span>
+          {changePct !== 0 && (
+            <span
+              className="text-sm"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: changePct >= 0 ? 'var(--green)' : 'var(--red)',
+              }}
+            >
+              {changePct >= 0 ? '+' : ''}{Number(changePct).toFixed(2)}%
+            </span>
+          )}
+        </div>
+
+        {/* Sparkline */}
+        {sparkData.length > 1 && (
+          <div className="mt-3">
+            <Sparkline data={sparkData} color={style.sparkline} width={280} height={40} />
+          </div>
         )}
-      </div>
 
-      {/* Confidence bar */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between text-[10px] mb-1">
-          <span className="text-gray-500">Confidence</span>
-          <span className="font-mono text-gray-300">{confidence}%</span>
+        {/* Entry / SL / Target grid */}
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          {[
+            { label: 'Entry', value: formatPrice(entry), valueColor: 'var(--white)' },
+            { label: 'Stop Loss', value: formatPrice(stopLoss), valueColor: 'var(--red)' },
+            { label: 'Target', value: formatPrice(target), valueColor: 'var(--green)' },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="px-2 py-1.5 rounded"
+              style={{ border: '1px solid var(--border)', background: 'var(--bg)' }}
+            >
+              <div
+                className="text-[9px] uppercase mb-0.5"
+                style={{ color: 'var(--muted)', letterSpacing: '0.5px' }}
+              >
+                {item.label}
+              </div>
+              <div
+                className="text-xs"
+                style={{ fontFamily: 'var(--font-mono)', color: item.valueColor }}
+              >
+                {item.value}
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="w-full bg-white/5 rounded-full h-1.5">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${confidence}%` }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className={`h-1.5 rounded-full ${
-              confidence >= 70 ? 'bg-accent-green' : confidence >= 50 ? 'bg-accent-yellow' : 'bg-accent-red'
-            }`}
+
+        {/* Confidence bar */}
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
+            Confidence
+          </span>
+          <div className="flex-1 h-[3px] rounded-full" style={{ background: 'var(--border)' }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.min(confidence, 100)}%`,
+                background: `linear-gradient(90deg, var(--gold-dim), var(--gold))`,
+              }}
+            />
+          </div>
+          <span
+            className="text-[11px]"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}
+          >
+            {Math.round(confidence)}%
+          </span>
+        </div>
+
+        {/* Strategy + R:R */}
+        {(strategy || rr) && (
+          <div className="mt-3 flex items-center justify-between">
+            {strategy && (
+              <p className="text-[11px] truncate mr-2" style={{ color: 'var(--muted)' }}>
+                {strategy}
+              </p>
+            )}
+            {rr && (
+              <span
+                className="text-[11px] whitespace-nowrap"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted2)' }}
+              >
+                R:R {rr}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Timestamp */}
+        <div className="mt-3 flex items-center gap-1.5">
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={{
+              background: isStale ? 'var(--red)' : 'var(--green)',
+            }}
           />
+          <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
+            {timestamp ? `${timestamp}` : ''}{age ? ` · ${age}` : ''}
+          </span>
         </div>
-      </div>
-
-      {/* Strategy */}
-      <div className="flex items-center gap-1.5 mb-2">
-        <Zap className="w-3 h-3 text-accent-yellow" />
-        <span className="text-[11px] text-gray-300 truncate">{strategy}</span>
-      </div>
-
-      {/* Top headline */}
-      {top_headline && top_headline !== 'No recent news' && (
-        <p className="text-[10px] text-gray-500 truncate leading-relaxed">
-          📰 {top_headline}
-        </p>
-      )}
-
-      {/* Signal timestamp */}
-      <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-        <span>🕐 {generated_at} {timezone}</span>
-        <span className="text-gray-600">·</span>
-        <span className={
-          timestamp_epoch && (Date.now() / 1000 - timestamp_epoch) > 3600
-            ? "text-red-400"
-            : "text-green-400"
-        }>
-          {timestamp_epoch ? getAge(timestamp_epoch) : ""}
-        </span>
       </div>
     </motion.div>
   );

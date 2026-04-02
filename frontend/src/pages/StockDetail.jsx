@@ -1,417 +1,457 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { createChart, ColorType } from 'lightweight-charts';
-import {
-  ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap,
-  Clock, BarChart3, Activity, Newspaper, Brain,
-} from 'lucide-react';
-import { fetchAnalysis, createAnalysisStream } from '../api';
+import TopBar from '../components/TopBar';
+import { getChart, getSuggestions, streamAnalysis } from '../api';
 
-export default function StockDetail({ market }) {
+export default function StockDetail({ market, setMarket }) {
   const { ticker } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const category = searchParams.get('category') || '';
+  const isIntraday = category === 'intraday';
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [agentLogs, setAgentLogs] = useState([]);
-  const [streamComplete, setStreamComplete] = useState(false);
+  const [chartData, setChartData] = useState(null);
+  const [stockInfo, setStockInfo] = useState(null);
+  const [streamLogs, setStreamLogs] = useState([]);
+  const [streaming, setStreaming] = useState(false);
+  const [indicators, setIndicators] = useState(null);
 
-  const decodedTicker = decodeURIComponent(ticker);
-
+  // Fetch chart data
   useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setAgentLogs([]);
-    setStreamComplete(false);
+    const period = isIntraday ? '1d' : '3mo';
+    const interval = isIntraday ? '5m' : '1d';
+    getChart(ticker, period, interval, market)
+      .then((data) => setChartData(data))
+      .catch(console.error);
+  }, [ticker, isIntraday, market]);
 
-    fetchAnalysis(decodedTicker, market)
-      .then((res) => {
-        if (mounted) {
-          setData(res);
-          setLoading(false);
-        }
+  // Find stock info from suggestions
+  useEffect(() => {
+    getSuggestions(market, 'intraday')
+      .then((data) => {
+        const all = data.suggestions || data.signals || data || [];
+        const found = all.find(
+          (s) => (s.ticker || s.symbol || '').toUpperCase() === ticker.toUpperCase()
+        );
+        if (found) setStockInfo(found);
       })
-      .catch(() => {
-        if (mounted) setLoading(false);
-      });
+      .catch(() => {});
+  }, [ticker, market]);
 
-    // Start SSE stream
-    const stream = createAnalysisStream(decodedTicker, market, (event) => {
-      if (!mounted) return;
-      if (event.type === 'status') {
-        setAgentLogs((prev) => [...prev, { type: 'status', text: event.data.step }]);
-      } else if (event.type === 'signal') {
-        setData((prev) => prev ? { ...prev, signal: event.data } : { signal: event.data });
-        setAgentLogs((prev) => [...prev, { type: 'signal', text: 'Signal generated' }]);
-      } else if (event.type === 'indicators') {
-        setData((prev) => prev ? { ...prev, indicators: event.data } : { indicators: event.data });
-      } else if (event.type === 'complete') {
-        setStreamComplete(true);
-        setAgentLogs((prev) => [...prev, { type: 'done', text: 'Analysis complete' }]);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      stream?.close();
-    };
-  }, [decodedTicker, market]);
-
-  // Render chart
+  // Create chart
   useEffect(() => {
-    if (!chartContainerRef.current || !data?.chart_data?.length) return;
+    if (!chartContainerRef.current || !chartData) return;
 
-    // Clear previous
+    const container = chartContainerRef.current;
+
+    // Clean up previous chart
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
     }
 
-    const chart = createChart(chartContainerRef.current, {
+    const chart = createChart(container, {
+      width: container.clientWidth,
+      height: 400,
       layout: {
-        background: { type: ColorType.Solid, color: '#111111' },
-        textColor: '#999',
+        background: { type: ColorType.Solid, color: '#080808' },
+        textColor: '#666666',
+        fontFamily: 'DM Mono, monospace',
+        fontSize: 11,
       },
       grid: {
-        vertLines: { color: '#1a1a1a' },
-        horzLines: { color: '#1a1a1a' },
+        vertLines: { color: '#1e1e1e' },
+        horzLines: { color: '#1e1e1e' },
       },
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
       crosshair: {
         mode: 0,
+        vertLine: { color: '#2a2a2a', labelBackgroundColor: '#c9a84c' },
+        horzLine: { color: '#2a2a2a', labelBackgroundColor: '#c9a84c' },
       },
       rightPriceScale: {
-        borderColor: '#222',
+        borderColor: '#1e1e1e',
       },
       timeScale: {
-        borderColor: '#222',
-        timeVisible: false,
+        borderColor: '#1e1e1e',
+        timeVisible: isIntraday,
+        secondsVisible: false,
       },
     });
 
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#00ff88',
-      downColor: '#ff3355',
-      borderUpColor: '#00ff88',
-      borderDownColor: '#ff3355',
-      wickUpColor: '#00ff88',
-      wickDownColor: '#ff3355',
-    });
+    const candlestickData = (chartData.candles || chartData.data || chartData || []).map((c) => ({
+      time: c.time || c.date || c.timestamp,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+    })).filter(c => c.time && c.open);
 
-    candleSeries.setData(data.chart_data);
+    if (candlestickData.length > 0) {
+      const series = chart.addCandlestickSeries({
+        upColor: '#00c896',
+        downColor: '#ff4560',
+        borderDownColor: '#ff4560',
+        borderUpColor: '#00c896',
+        wickDownColor: '#ff4560',
+        wickUpColor: '#00c896',
+      });
+      series.setData(candlestickData);
+      chart.timeScale().fitContent();
+    }
 
-    // Volume
-    const volumeSeries = chart.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
-    });
-
-    volumeSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
-    });
-
-    volumeSeries.setData(
-      data.chart_data.map((d) => ({
-        time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? 'rgba(0,255,136,0.2)' : 'rgba(255,51,85,0.2)',
-      }))
-    );
-
-    chart.timeScale().fitContent();
     chartRef.current = chart;
 
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
+    const resizeHandler = () => {
+      chart.applyOptions({ width: container.clientWidth });
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', resizeHandler);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', resizeHandler);
       chart.remove();
+      chartRef.current = null;
     };
-  }, [data?.chart_data]);
+  }, [chartData, isIntraday]);
 
-  if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Activity className="w-8 h-8 text-accent-green animate-pulse" />
-      </div>
-    );
-  }
+  // Stream analysis
+  const startAnalysis = useCallback(() => {
+    if (streaming) return;
+    setStreaming(true);
+    setStreamLogs([]);
+    setIndicators(null);
 
-  const signal = data?.signal;
-  const indicators = data?.indicators || {};
-  const info = data?.info || {};
-  const isBuy = signal?.signal === 'BUY';
-  const isAvoid = signal?.signal === 'AVOID';
-  const currency = decodedTicker?.endsWith('.NS') ? '₹' : '$';
+    const es = streamAnalysis(ticker, market, (msg) => {
+      if (msg.type === 'status') {
+        setStreamLogs((prev) => [...prev, { text: msg.data.step || msg.data.message || msg.data.status || JSON.stringify(msg.data), type: 'status' }]);
+      } else if (msg.type === 'indicators') {
+        setIndicators(msg.data);
+        setStreamLogs((prev) => [...prev, { text: '✓ Indicators received', type: 'data' }]);
+      } else if (msg.type === 'signal') {
+        setStockInfo((prev) => ({ ...prev, ...msg.data }));
+        setStreamLogs((prev) => [...prev, { text: `Signal: ${msg.data.signal || msg.data.action}`, type: 'signal' }]);
+      } else if (msg.type === 'complete') {
+        setStreamLogs((prev) => [...prev, { text: '✓ Analysis complete', type: 'complete' }]);
+        setStreaming(false);
+      } else if (msg.type === 'error') {
+        setStreamLogs((prev) => [...prev, { text: '✗ Error: ' + (msg.data.error || 'Unknown'), type: 'error' }]);
+        setStreaming(false);
+      }
+    });
+
+    return () => es.close();
+  }, [ticker, market, streaming]);
+
+  // Auto-start analysis
+  useEffect(() => {
+    const cleanup = startAnalysis();
+    return cleanup;
+  }, []);
+
+  const signal = (stockInfo?.signal || stockInfo?.action || '').toUpperCase();
+  const price = stockInfo?.price || stockInfo?.ltp || stockInfo?.current_price || 0;
+  const changePct = stockInfo?.change_pct ?? stockInfo?.pct_change ?? 0;
+  const entry = stockInfo?.entry || stockInfo?.entry_price || 0;
+  const stopLoss = stockInfo?.stop_loss || stockInfo?.sl || 0;
+  const target = stockInfo?.target || stockInfo?.target_price || 0;
+  const confidence = stockInfo?.confidence || stockInfo?.confidence_score || 0;
+  const companyName = stockInfo?.company_name || stockInfo?.name || '';
+  const exchange = stockInfo?.exchange || '';
+  const currencySymbol = exchange?.includes('NS') || exchange?.includes('BO') || market === 'india' ? '₹' : '$';
+
+  const formatPrice = (p) => {
+    if (!p) return '-';
+    return `${currencySymbol}${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const signalColor = signal === 'BUY' ? 'var(--green)' : signal === 'SELL' ? 'var(--red)' : 'var(--orange)';
+  const signalBg = signal === 'BUY' ? 'rgba(0,200,150,0.12)' : signal === 'SELL' ? 'rgba(255,69,96,0.12)' : 'rgba(255,140,0,0.12)';
+  const signalBorder = signal === 'BUY' ? 'rgba(0,200,150,0.25)' : signal === 'SELL' ? 'rgba(255,69,96,0.25)' : 'rgba(255,140,0,0.25)';
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Back button */}
-      <button
-        onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-2 text-gray-400 hover:text-accent-green transition-colors mb-6 text-sm group"
-      >
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-        Back to Dashboard
-      </button>
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <TopBar market={market} setMarket={setMarket} />
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-1">
-            {signal?.name || info?.name || decodedTicker}
-          </h1>
-          <p className="text-gray-500 text-sm font-mono">{decodedTicker}</p>
-        </div>
-        {signal && (
-          <span className={`text-lg ${isBuy ? 'badge-buy' : isAvoid ? 'badge-avoid' : 'badge-sell'}`}>
-            {signal.signal}
-          </span>
-        )}
-      </div>
+      <div className="max-w-[1440px] mx-auto px-6 py-6">
+        {/* Back link */}
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="text-[11px] uppercase tracking-wider mb-4 transition-colors"
+          style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}
+          onMouseEnter={(e) => e.target.style.color = 'var(--gold)'}
+          onMouseLeave={(e) => e.target.style.color = 'var(--muted)'}
+        >
+          ← Back to Terminal
+        </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Chart + Signal */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Candlestick Chart */}
-          <div className="card p-0 overflow-hidden">
-            <div ref={chartContainerRef} className="w-full" />
+        {/* Stock header */}
+        <div
+          className="p-6 rounded-md mb-6"
+          style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1
+                className="text-[36px] leading-none"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+              >
+                {decodeURIComponent(ticker)}
+              </h1>
+              <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                {companyName}{exchange ? ` · ${exchange}` : ''}
+              </p>
+            </div>
+            {signal && (
+              <span
+                className="px-3 py-1.5 rounded text-xs uppercase font-medium tracking-wider"
+                style={{ background: signalBg, color: signalColor, border: `1px solid ${signalBorder}` }}
+              >
+                {signal}
+              </span>
+            )}
           </div>
 
-          {/* Signal Card (expanded) */}
-          {signal && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="card"
+          <div className="flex items-baseline gap-3 mb-4">
+            <span
+              className="text-3xl"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
             >
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Target className="w-5 h-5 text-accent-yellow" />
-                Trading Signal
-              </h2>
+              {price ? formatPrice(price) : '--'}
+            </span>
+            {changePct !== 0 && (
+              <span
+                className="text-lg"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: changePct >= 0 ? 'var(--green)' : 'var(--red)',
+                }}
+              >
+                {changePct >= 0 ? '+' : ''}{Number(changePct).toFixed(2)}%
+              </span>
+            )}
+          </div>
 
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-gray-500 text-xs mb-1">Entry</div>
-                  <div className="font-mono text-lg font-bold text-white">
-                    {currency}{signal.entry?.toFixed(2)}
-                  </div>
+          {/* Entry / SL / Target + Confidence */}
+          <div className="flex items-center gap-4">
+            {[
+              { label: 'Entry', value: formatPrice(entry), color: 'var(--white)' },
+              { label: 'Stop Loss', value: formatPrice(stopLoss), color: 'var(--red)' },
+              { label: 'Target', value: formatPrice(target), color: 'var(--green)' },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="px-3 py-2 rounded"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+              >
+                <div className="text-[9px] uppercase mb-0.5" style={{ color: 'var(--muted)', letterSpacing: '0.5px' }}>
+                  {item.label}
                 </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-gray-500 text-xs mb-1">Stop Loss</div>
-                  <div className="font-mono text-lg font-bold text-accent-red">
-                    {currency}{signal.sl?.toFixed(2)}
-                  </div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-gray-500 text-xs mb-1">Target</div>
-                  <div className="font-mono text-lg font-bold text-accent-green">
-                    {currency}{signal.target?.toFixed(2)}
-                  </div>
+                <div className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: item.color }}>
+                  {item.value}
                 </div>
               </div>
+            ))}
 
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-300 border border-white/10">
-                  <Target className="w-3 h-3" /> R:R {signal.rr_ratio}
-                </span>
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-300 border border-white/10">
-                  <Clock className="w-3 h-3" /> {signal.timeframe}
-                </span>
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-300 border border-white/10">
-                  <Zap className="w-3 h-3 text-accent-yellow" /> {signal.strategy}
-                </span>
-              </div>
-
-              {/* Confidence */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-500">Confidence</span>
-                  <span className="font-mono text-gray-300">{signal.confidence}%</span>
-                </div>
-                <div className="w-full bg-white/5 rounded-full h-2">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${signal.confidence}%` }}
-                    transition={{ duration: 0.6 }}
-                    className={`h-2 rounded-full ${
-                      signal.confidence >= 70 ? 'bg-accent-green' : signal.confidence >= 50 ? 'bg-accent-yellow' : 'bg-accent-red'
-                    }`}
+            {/* Confidence */}
+            {confidence > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>Confidence</span>
+                <div className="w-24 h-[3px] rounded-full" style={{ background: 'var(--border)' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(confidence, 100)}%`,
+                      background: 'linear-gradient(90deg, var(--gold-dim), var(--gold))',
+                    }}
                   />
                 </div>
-              </div>
-
-              {/* Reasoning */}
-              {signal.reasoning && (
-                <div className="bg-white/5 rounded-lg p-3">
-                  <p className="text-sm text-gray-300 leading-relaxed">{signal.reasoning}</p>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </div>
-
-        {/* Right sidebar */}
-        <div className="space-y-6">
-          {/* Technical Indicators */}
-          <motion.div
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="card"
-          >
-            <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-accent-blue" />
-              Technical Indicators
-            </h2>
-            <div className="space-y-3">
-              {[
-                { label: 'RSI (14)', value: indicators.rsi, color: indicators.rsi > 70 ? 'text-accent-red' : indicators.rsi < 30 ? 'text-accent-green' : 'text-white' },
-                { label: 'MACD', value: indicators.macd, color: indicators.macd > 0 ? 'text-accent-green' : 'text-accent-red' },
-                { label: 'MACD Signal', value: indicators.macd_signal },
-                { label: 'MACD Histogram', value: indicators.macd_histogram, color: indicators.macd_histogram > 0 ? 'text-accent-green' : 'text-accent-red' },
-                { label: 'EMA 9', value: indicators.ema_9 },
-                { label: 'EMA 21', value: indicators.ema_21 },
-                { label: 'EMA 50', value: indicators.ema_50 },
-                { label: 'VWAP', value: indicators.vwap },
-                { label: 'ATR', value: indicators.atr },
-                { label: 'BB Upper', value: indicators.bb_upper },
-                { label: 'BB Lower', value: indicators.bb_lower },
-                { label: 'Support', value: indicators.support_1 },
-                { label: 'Resistance', value: indicators.resistance_1 },
-              ].map((ind) =>
-                ind.value != null ? (
-                  <div key={ind.label} className="flex justify-between text-xs">
-                    <span className="text-gray-500">{ind.label}</span>
-                    <span className={`font-mono font-medium ${ind.color || 'text-white'}`}>
-                      {typeof ind.value === 'number' ? ind.value.toFixed(2) : ind.value}
-                    </span>
-                  </div>
-                ) : null
-              )}
-            </div>
-          </motion.div>
-
-          {/* Fundamentals */}
-          {info && info.pe_ratio && (
-            <motion.div
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="card"
-            >
-              <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-accent-green" />
-                Fundamentals
-              </h2>
-              <div className="space-y-3">
-                {[
-                  { label: 'P/E Ratio', value: info.pe_ratio },
-                  { label: 'EPS', value: info.eps },
-                  { label: 'Market Cap', value: info.market_cap ? `${(info.market_cap / 1e9).toFixed(1)}B` : null },
-                  { label: 'D/E Ratio', value: info.debt_to_equity },
-                  { label: 'Profit Margin', value: info.profit_margin ? `${(info.profit_margin * 100).toFixed(1)}%` : null },
-                  { label: 'Rev. Growth', value: info.revenue_growth ? `${(info.revenue_growth * 100).toFixed(1)}%` : null },
-                  { label: '52W High', value: info['52w_high'] },
-                  { label: '52W Low', value: info['52w_low'] },
-                  { label: 'Beta', value: info.beta },
-                ].map((f) =>
-                  f.value != null ? (
-                    <div key={f.label} className="flex justify-between text-xs">
-                      <span className="text-gray-500">{f.label}</span>
-                      <span className="font-mono text-white">
-                        {typeof f.value === 'number' ? f.value.toFixed(2) : f.value}
-                      </span>
-                    </div>
-                  ) : null
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Agent Log (SSE) */}
-          <motion.div
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="card"
-          >
-            <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-400" />
-              AI Analysis Log
-              {!streamComplete && (
-                <span className="ml-auto w-2 h-2 rounded-full bg-accent-green animate-pulse" />
-              )}
-            </h2>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              <AnimatePresence>
-                {agentLogs.map((log, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="flex items-start gap-2 text-xs"
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
-                        log.type === 'done'
-                          ? 'bg-accent-green'
-                          : log.type === 'signal'
-                          ? 'bg-accent-yellow'
-                          : 'bg-gray-500'
-                      }`}
-                    />
-                    <span className="text-gray-400">{log.text}</span>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              {agentLogs.length === 0 && (
-                <p className="text-gray-600 text-xs">Waiting for analysis stream...</p>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Sentiment / News */}
-          {signal?.top_headline && signal.top_headline !== 'No recent news' && (
-            <motion.div
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="card"
-            >
-              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Newspaper className="w-4 h-4 text-accent-yellow" />
-                Sentiment
-              </h2>
-              <div className="flex items-center gap-2 mb-3">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    signal.sentiment === 'positive'
-                      ? 'bg-accent-green/20 text-accent-green'
-                      : signal.sentiment === 'negative'
-                      ? 'bg-accent-red/20 text-accent-red'
-                      : 'bg-white/10 text-gray-400'
-                  }`}
-                >
-                  {signal.sentiment}
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
+                  {Math.round(confidence)}%
                 </span>
               </div>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                📰 {signal.top_headline}
+            )}
+          </div>
+        </div>
+
+        {/* Two-column layout */}
+        <div className="grid gap-6" style={{ gridTemplateColumns: '60% 40%' }}>
+          {/* Left: Chart */}
+          <div
+            className="rounded-md overflow-hidden"
+            style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+          >
+            <div className="p-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>{isIntraday ? 'Intraday 5m Chart' : '3M Daily Chart'}</span>
+            </div>
+            <div ref={chartContainerRef} style={{ width: '100%', minHeight: '400px' }} />
+          </div>
+
+          {/* Right: Technical breakdown */}
+          <div className="space-y-3">
+            <h3
+              className="text-[18px]"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              TECHNICAL BREAKDOWN
+            </h3>
+            <div className="h-[1px]" style={{ background: 'var(--gold)', width: '40px' }} />
+
+            {indicators ? (
+              <div className="space-y-2">
+                {[
+                  { label: 'RSI (14)', value: indicators.rsi, status: getIndicatorStatus('rsi', indicators.rsi) },
+                  { label: 'MACD', value: indicators.macd_histogram, status: getIndicatorStatus('macd', indicators.macd_histogram) },
+                  { label: 'EMA 9/21', value: indicators.ema_9 && indicators.ema_21 ? `${indicators.ema_9} / ${indicators.ema_21}` : '-', status: getIndicatorStatus('ema', null, indicators) },
+                  { label: 'Bollinger', value: indicators.bb_upper && indicators.bb_lower ? `${indicators.bb_lower} — ${indicators.bb_upper}` : '-', status: getIndicatorStatus('bollinger', null, indicators) },
+                  { label: 'VWAP', value: indicators.vwap, status: getIndicatorStatus('vwap', null, indicators) },
+                  { label: 'Volume', value: indicators.volume_ratio || '-', status: indicators.volume_ratio ? (indicators.volume_ratio >= 1.5 ? 'High' : 'Normal') : '-' },
+                  { label: 'ATR', value: indicators.atr, status: '-' },
+                  { label: 'Support / Resistance', value: indicators.support_1 && indicators.resistance_1 ? `${indicators.support_1} / ${indicators.resistance_1}` : '-', status: '-' },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="p-3 rounded flex items-center justify-between"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+                  >
+                    <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>
+                      {item.label}
+                    </span>
+                    <div className="text-right">
+                      <span
+                        className="text-xs block"
+                        style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
+                      >
+                        {typeof item.value === 'number' ? item.value.toFixed(2) : item.value}
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded h-12 animate-pulse"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Analysis stream */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3
+                className="text-[18px]"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+              >
+                AGENT ANALYSIS
+              </h3>
+              <div className="h-[1px] mt-1" style={{ background: 'var(--gold)', width: '40px' }} />
+            </div>
+            {!streaming && (
+              <button
+                onClick={startAnalysis}
+                className="px-3 py-1.5 rounded text-[11px] uppercase tracking-wider transition-colors"
+                style={{
+                  background: 'rgba(201,168,76,0.1)',
+                  color: 'var(--gold)',
+                  border: '1px solid rgba(201,168,76,0.25)',
+                }}
+              >
+                Re-analyze
+              </button>
+            )}
+          </div>
+
+          <div
+            className="p-4 rounded-md max-h-[300px] overflow-y-auto"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            {streamLogs.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                {streaming ? 'Connecting to analysis stream...' : 'No analysis data yet.'}
               </p>
-            </motion.div>
-          )}
+            ) : (
+              streamLogs.map((log, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="py-1 text-xs leading-relaxed"
+                  style={{
+                    color: log.type === 'error' ? 'var(--red)'
+                      : log.type === 'complete' ? 'var(--gold)'
+                      : log.type === 'signal' ? 'var(--gold)'
+                      : 'var(--green)',
+                  }}
+                >
+                  <span style={{ color: 'var(--muted2)' }}>[{String(i + 1).padStart(2, '0')}]</span>{' '}
+                  {log.text}
+                </motion.div>
+              ))
+            )}
+            {streaming && (
+              <span className="inline-block w-2 h-3 ml-1 blink" style={{ background: 'var(--green)' }} />
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function getIndicatorStatus(type, value, indicators) {
+  if (type === 'rsi') {
+    const num = Number(value);
+    if (isNaN(num) || value === null || value === undefined) return '-';
+    if (num > 70) return 'Overbought';
+    if (num < 30) return 'Oversold';
+    return 'Neutral';
+  }
+  if (type === 'macd') {
+    const num = Number(value);
+    if (isNaN(num) || value === null || value === undefined) return '-';
+    return num > 0 ? 'Bullish' : 'Bearish';
+  }
+  if (type === 'ema' && indicators) {
+    const ema9 = indicators.ema_9;
+    const ema21 = indicators.ema_21;
+    const price = indicators.current_price;
+    if (!ema9 || !ema21) return '-';
+    if (price > ema9 && ema9 > ema21) return 'Bullish';
+    if (price < ema9 && ema9 < ema21) return 'Bearish';
+    return 'Neutral';
+  }
+  if (type === 'bollinger' && indicators) {
+    const price = indicators.current_price;
+    const upper = indicators.bb_upper;
+    const lower = indicators.bb_lower;
+    if (!price || !upper || !lower) return '-';
+    if (price >= upper * 0.99) return 'Near Upper';
+    if (price <= lower * 1.01) return 'Near Lower';
+    return 'Mid-range';
+  }
+  if (type === 'vwap' && indicators) {
+    const price = indicators.current_price;
+    const vwap = indicators.vwap;
+    if (!price || !vwap) return '-';
+    return price > vwap ? 'Above' : 'Below';
+  }
+  return String(value || '-');
 }

@@ -1,201 +1,444 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, RefreshCw, AlertTriangle, Zap } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import TopBar from '../components/TopBar';
+import TickerStrip from '../components/TickerStrip';
 import CategoryTabs from '../components/CategoryTabs';
 import SuggestionCard from '../components/SuggestionCard';
-import NewsTickerFeed from '../components/NewsTickerFeed';
-import { fetchSuggestions, fetchNews, fetchChartData, triggerScan } from '../api';
+import { getSuggestions, triggerScan, getNews, getIndices, connectWebSocket } from '../api';
 
-export default function Home({ market }) {
+export default function Home({ market, setMarket }) {
+  const navigate = useNavigate();
   const [category, setCategory] = useState('all');
-  const [allSuggestions, setAllSuggestions] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [news, setNews] = useState([]);
-  const [chartCache, setChartCache] = useState({});
+  const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
-  const [marketOpen, setMarketOpen] = useState(true);
-  const [isHoliday, setIsHoliday] = useState(false);
-  const [lastScan, setLastScan] = useState('');
-  const pollRef = useRef(null);
+  const [news, setNews] = useState([]);
+  const [indices, setIndices] = useState([]);
+  const [lastScan, setLastScan] = useState(null);
+  const [closedReason, setClosedReason] = useState(null);
+  const refreshTimer = useRef(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // Fetch suggestions
+  const fetchCards = useCallback(async () => {
     try {
-      const [sugData, newsData] = await Promise.all([
-        fetchSuggestions(market, 'all'),
-        fetchNews(market),
-      ]);
-
-      const all = sugData.suggestions || [];
-      setAllSuggestions(all);
-      setSuggestions(category === 'all' ? all : all.filter(s => s.category === category));
-      setMarketOpen(sugData.market_open);
-      setIsHoliday(sugData.is_holiday || false);
-      setLastScan(sugData.last_scan || '');
-      setScanning(sugData.scanning || false);
-      setNews(newsData.news || []);
-
-      // Load mini chart data for first 6 suggestions
-      const chartPromises = all.slice(0, 6).map(async (s) => {
-        if (!chartCache[s.ticker]) {
-          const cd = await fetchChartData(s.ticker, '1mo', '1d');
-          return { ticker: s.ticker, data: cd.data || [] };
-        }
-        return null;
-      });
-
-      const charts = await Promise.all(chartPromises);
-      const newCache = { ...chartCache };
-      charts.forEach((c) => {
-        if (c) newCache[c.ticker] = c.data;
-      });
-      setChartCache(newCache);
+      setLoading(true);
+      const data = await getSuggestions(market, category);
+      setCards(data.suggestions || data.signals || data || []);
+      setClosedReason(data.closed_reason || null);
+      setLastScan(new Date());
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error('Failed to fetch suggestions:', err);
+      setCards([]);
     } finally {
       setLoading(false);
     }
+  }, [market, category]);
+
+  // Trigger a real backend scan then refresh cards
+  const handleRefresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      const scanResult = await triggerScan(market);
+      if (scanResult.closed_reason) {
+        setCards([]);
+        setClosedReason(scanResult.closed_reason);
+        setLastScan(new Date());
+        return;
+      }
+      // Use the scan result directly (it includes fresh suggestions)
+      const suggestions = scanResult.suggestions || [];
+      setClosedReason(null);
+      if (category !== 'all') {
+        setCards(suggestions.filter(s => s.category === category));
+      } else {
+        setCards(suggestions);
+      }
+      setLastScan(new Date());
+    } catch (err) {
+      console.error('Failed to trigger scan:', err);
+      // Fallback to cached suggestions
+      await fetchCards();
+    } finally {
+      setLoading(false);
+    }
+  }, [market, category, fetchCards]);
+
+  // Clear cards immediately when market changes so stale data doesn't linger
+  useEffect(() => {
+    setCards([]);
+    setClosedReason(null);
   }, [market]);
 
-  // Fetch data only when market changes
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Auto-poll while scan is in progress
-  useEffect(() => {
-    if (scanning && allSuggestions.length === 0) {
-      pollRef.current = setInterval(() => {
-        loadData();
-      }, 5000);
+  // Fetch news
+  const fetchNewsData = useCallback(async () => {
+    try {
+      const data = await getNews(market);
+      setNews(data.news || data.articles || data || []);
+    } catch (err) {
+      console.error('Failed to fetch news:', err);
     }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [scanning, allSuggestions.length, loadData]);
+  }, [market]);
 
-  // Filter locally when category changes
+  // Fetch indices
+  const fetchIndicesData = useCallback(async () => {
+    try {
+      const data = await getIndices(market);
+      setIndices(data.indices || data || []);
+    } catch (err) {
+      console.error('Failed to fetch indices:', err);
+    }
+  }, [market]);
+
+  // Auto-refresh suggestions every 60s
   useEffect(() => {
-    setSuggestions(
-      category === 'all' ? allSuggestions : allSuggestions.filter(s => s.category === category)
-    );
-  }, [category, allSuggestions]);
+    fetchCards();
+    refreshTimer.current = setInterval(fetchCards, 60000);
+    return () => clearInterval(refreshTimer.current);
+  }, [fetchCards]);
+
+  // Fetch news every 2 min
+  useEffect(() => {
+    fetchNewsData();
+    const interval = setInterval(fetchNewsData, 120000);
+    return () => clearInterval(interval);
+  }, [fetchNewsData]);
+
+  // Fetch indices on market change
+  useEffect(() => {
+    fetchIndicesData();
+  }, [fetchIndicesData]);
+
+  // Count signals
+  const buyCount = cards.filter(c => (c.signal || c.action || '').toUpperCase() === 'BUY').length;
+  const sellCount = cards.filter(c => (c.signal || c.action || '').toUpperCase() === 'SELL').length;
+  const avoidCount = cards.filter(c => (c.signal || c.action || '').toUpperCase() === 'AVOID').length;
+  const avgConfidence = cards.length > 0
+    ? Math.round(cards.reduce((sum, c) => sum + (c.confidence || c.confidence_score || 0), 0) / cards.length)
+    : 0;
+
+  const now = new Date();
+  const hour = now.getHours();
+  const isMarketOpen = !closedReason && (market === 'india'
+    ? (hour >= 9 && hour < 16)
+    : (hour >= 9 && hour < 16));
 
   return (
-    <div className="flex-1">
-      {/* Dashboard Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-6"
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <TopBar market={market} setMarket={setMarket} />
+      <TickerStrip market={market} />
+
+      <div
+        className="mx-auto px-6 py-6"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 320px',
+          gap: '0',
+          maxWidth: '1440px',
+        }}
       >
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-2 h-2 rounded-full bg-accent-green animate-pulse" style={{ boxShadow: '0 0 8px #00ff88' }} />
-          <h1 className="text-2xl font-black text-white">
-            AI Market <span className="text-accent-green">Dashboard</span>
-          </h1>
-        </div>
-        <p className="text-gray-500 text-sm ml-5">
-          Real-time signals powered by multi-agent AI — {market === 'india' ? '🇮🇳 NSE India' : '🇺🇸 US Markets'}
-        </p>
-      </motion.div>
-
-      {/* Market Closed / Holiday Banner */}
-      <AnimatePresence>
-        {!marketOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className={`border rounded-lg px-4 py-2.5 mb-4 flex items-center gap-2 ${
-              isHoliday
-                ? 'bg-red-500/10 border-red-500/20'
-                : 'bg-accent-yellow/10 border-accent-yellow/20'
-            }`}
-          >
-            <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${isHoliday ? 'text-red-400' : 'text-accent-yellow'}`} />
-            <span className={`text-xs ${isHoliday ? 'text-red-400' : 'text-accent-yellow'}`}>
-              {isHoliday
-                ? `Trading Holiday — No intraday calls today. Showing swing/F&O picks from last session${lastScan ? ` (${lastScan})` : ''}.`
-                : `Market Closed — Showing last session data${lastScan ? ` (${lastScan})` : ''}.`
-              }
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Category Tabs */}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <CategoryTabs active={category} onSelect={setCategory} />
-        <button
-          onClick={loadData}
-          className="p-2 rounded-lg bg-bg-card border border-bg-border hover:border-gray-600 transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw className={`w-4 h-4 text-gray-400 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-
-      <div className="flex gap-6">
-        {/* Main: Suggestion Cards Grid */}
-        <div className="flex-1">
-          {(loading || scanning) && suggestions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Activity className="w-8 h-8 text-accent-green animate-pulse mb-3" />
-              <p className="text-gray-400 text-sm font-medium mb-1">
-                {scanning ? 'AI agents scanning markets...' : 'Loading...'}
-              </p>
-              {scanning && (
-                <p className="text-gray-600 text-xs">Analyzing stocks with technical indicators, sentiment & patterns</p>
-              )}
-            </div>
-          ) : suggestions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Zap className="w-8 h-8 text-gray-600 mb-3" />
-              <p className="text-gray-500 text-sm mb-2">No signals found</p>
-              <p className="text-gray-600 text-xs mb-4">Run the AI scanner to find trading opportunities</p>
-              <button
-                onClick={async () => {
-                  setScanning(true);
-                  try {
-                    const data = await triggerScan(market);
-                    const all = data.suggestions || [];
-                    setAllSuggestions(all);
-                    setSuggestions(category === 'all' ? all : all.filter(s => s.category === category));
-                  } catch (e) {
-                    console.error('Scan failed:', e);
-                  } finally {
-                    setScanning(false);
-                  }
-                }}
-                className="px-4 py-2 bg-accent-green/20 text-accent-green rounded-lg text-sm font-medium hover:bg-accent-green/30 transition-colors flex items-center gap-2"
+        {/* Left panel - Main content */}
+        <div className="pr-6">
+          {/* Section header */}
+          <div className="mb-6">
+            <div className="gold-divider" />
+            <div className="flex items-center gap-3 mb-1">
+              <h1
+                className="text-[32px] leading-none"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
               >
-                <Zap className="w-4 h-4" />
-                Scan Now
+                TODAY'S SIGNALS
+              </h1>
+              <span
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] uppercase"
+                style={{
+                  background: isMarketOpen ? 'rgba(0,200,150,0.1)' : 'rgba(255,69,96,0.1)',
+                  color: isMarketOpen ? 'var(--green)' : 'var(--red)',
+                  border: `1px solid ${isMarketOpen ? 'rgba(0,200,150,0.2)' : 'rgba(255,69,96,0.2)'}`,
+                }}
+              >
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full blink"
+                  style={{ background: isMarketOpen ? 'var(--green)' : 'var(--red)' }}
+                />
+                {isMarketOpen ? 'Market Open' : 'Market Closed'}
+              </span>
+              <button
+                onClick={() => { handleRefresh(); fetchNewsData(); fetchIndicesData(); }}
+                className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] uppercase tracking-wider transition-colors"
+                style={{
+                  background: 'rgba(201,168,76,0.08)',
+                  color: 'var(--gold)',
+                  border: '1px solid rgba(201,168,76,0.2)',
+                }}
+                title="Refresh data"
+              >
+                <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
+                Refresh
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              <AnimatePresence mode="popLayout">
-                {suggestions.map((s, i) => (
-                  <SuggestionCard
-                    key={s.ticker}
-                    suggestion={s}
-                    chartData={chartCache[s.ticker]}
-                    index={i}
+            <p className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+              AI-generated · Updated {lastScan ? lastScan.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'} · {cards.length} active signals
+            </p>
+          </div>
+
+          {/* Category tabs */}
+          <div className="mb-5">
+            <CategoryTabs active={category} onChange={setCategory} />
+          </div>
+
+          {/* Cards grid */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${market}-${category}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="grid gap-4"
+              style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}
+            >
+              {loading && cards.length === 0 ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-md h-64 animate-pulse"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
                   />
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
+                ))
+              ) : cards.length === 0 ? (
+                <div
+                  className="col-span-2 text-center py-16"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  {closedReason ? (
+                    <>
+                      <p className="text-sm" style={{ color: 'var(--gold)' }}>
+                        {market === 'india' ? '🇮🇳' : '🇺🇸'} Market is closed — {closedReason}
+                      </p>
+                      <p className="text-xs mt-2" style={{ color: 'var(--muted2)' }}>
+                        Stock recommendations are not available during holidays and weekends.
+                        <br />Check back when the market reopens.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm">No signals available for this category.</p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--muted2)' }}>
+                        Signals are generated during market hours.
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                cards.map((card, i) => (
+                  <SuggestionCard key={card.ticker || card.symbol || i} card={card} index={i} />
+                ))
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        {/* Right Sidebar: News */}
-        <div className="hidden lg:block w-80 flex-shrink-0">
-          <div className="sticky top-4">
-            <NewsTickerFeed news={news} />
+        {/* Right panel - Sidebar */}
+        <div
+          className="pl-6"
+          style={{ borderLeft: '1px solid var(--border)' }}
+        >
+          {/* Markets section */}
+          <div className="mb-6">
+            <h2
+              className="text-[18px] mb-1"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              MARKETS
+            </h2>
+            <div className="h-[1px] mb-3" style={{ background: 'var(--gold)', width: '100%' }} />
+
+            <div className="grid grid-cols-2 gap-2">
+              {indices.length > 0 ? (
+                indices.slice(0, 4).map((idx, i) => (
+                  <div
+                    key={idx.name || i}
+                    className="p-2.5 rounded"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+                  >
+                    <div
+                      className="text-[10px] uppercase mb-1"
+                      style={{ color: 'var(--muted)', letterSpacing: '0.5px' }}
+                    >
+                      {idx.name || idx.ticker}
+                    </div>
+                    <div
+                      className="text-[15px]"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
+                    >
+                      {typeof idx.value === 'number'
+                        ? idx.value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                        : idx.price?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || '--'}
+                    </div>
+                    <div
+                      className="text-[11px]"
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        color: (idx.change_pct || idx.pct_change || 0) >= 0 ? 'var(--green)' : 'var(--red)',
+                      }}
+                    >
+                      {(idx.change_pct || idx.pct_change || 0) >= 0 ? '+' : ''}
+                      {(idx.change_pct || idx.pct_change || 0).toFixed(2)}%
+                    </div>
+                  </div>
+                ))
+              ) : (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-2.5 rounded h-16 animate-pulse"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Live News section */}
+          <div className="mb-6">
+            <h2
+              className="text-[18px] mb-1"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              LIVE NEWS
+            </h2>
+            <div className="h-[1px] mb-3" style={{ background: 'var(--gold)', width: '100%' }} />
+
+            <div className="space-y-0 max-h-[360px] overflow-y-auto">
+              {news.length > 0 ? (
+                news.slice(0, 6).map((item, i) => {
+                  const headline = item.headline || item.title || '';
+                  const ticker = item.ticker || item.symbol || '';
+                  const sentiment = item.sentiment || '';
+                  const timeAgo = item.time_ago || item.published || '';
+                  const newsUrl = item.url || '';
+                  return (
+                    <a
+                      key={i}
+                      href={newsUrl || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block py-3 cursor-pointer group"
+                      style={{ borderBottom: '1px solid var(--border)', textDecoration: 'none' }}
+                    >
+                      <p
+                        className="text-xs leading-relaxed transition-colors"
+                        style={{ color: 'var(--white)' }}
+                        onMouseEnter={(e) => e.target.style.color = 'var(--gold)'}
+                        onMouseLeave={(e) => e.target.style.color = 'var(--white)'}
+                      >
+                        {headline}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {ticker && (
+                          <span
+                            className="px-1.5 py-0.5 rounded text-[9px] uppercase font-medium"
+                            style={{
+                              background: sentiment === 'negative' || sentiment === 'bearish'
+                                ? 'rgba(255,69,96,0.15)' : 'rgba(0,200,150,0.15)',
+                              color: sentiment === 'negative' || sentiment === 'bearish'
+                                ? 'var(--red)' : 'var(--green)',
+                            }}
+                          >
+                            {ticker}
+                          </span>
+                        )}
+                        <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
+                          {timeAgo}
+                        </span>
+                        {newsUrl && (
+                          <span className="text-[10px] ml-auto" style={{ color: 'var(--gold)' }}>↗</span>
+                        )}
+                      </div>
+                    </a>
+                  );
+                })
+              ) : (
+                <p className="text-xs py-4" style={{ color: 'var(--muted)' }}>
+                  No news available.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Session Summary */}
+          <div>
+            <h2
+              className="text-[18px] mb-1"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              SESSION SUMMARY
+            </h2>
+            <div className="h-[1px] mb-3" style={{ background: 'var(--gold)', width: '100%' }} />
+
+            <div
+              className="p-4 rounded-md space-y-2.5"
+              style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+            >
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Total Signals</span>
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}>
+                  {cards.length}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>BUY</span>
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--green)' }}>
+                  {buyCount}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>SELL</span>
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--red)' }}>
+                  {sellCount}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>AVOID</span>
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--orange)' }}>
+                  {avoidCount}
+                </span>
+              </div>
+              <div className="h-[1px]" style={{ background: 'var(--border)' }} />
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Avg Confidence</span>
+                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
+                  {avgConfidence}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Last Scan</span>
+                <span className="text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
+                  {lastScan ? lastScan.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Next Scan</span>
+                <span className="text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
+                  {lastScan
+                    ? new Date(lastScan.getTime() + 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : '--:--'}
+                </span>
+              </div>
+              <div className="h-[1px] mt-1" style={{ background: 'var(--border)' }} />
+              <button
+                onClick={() => navigate('/accuracy')}
+                className="w-full mt-1 py-2 rounded text-[11px] uppercase tracking-wider transition-colors text-center"
+                style={{
+                  background: 'rgba(201,168,76,0.08)',
+                  color: 'var(--gold)',
+                  border: '1px solid rgba(201,168,76,0.2)',
+                }}
+              >
+                View Accuracy Dashboard →
+              </button>
+            </div>
           </div>
         </div>
       </div>

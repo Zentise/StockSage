@@ -1,37 +1,43 @@
-import { motion } from 'framer-motion';
+import React from 'react';
 
 const TABS = [
   { id: 'all', label: 'All' },
   { id: 'intraday', label: 'Intraday' },
-  { id: 'fno', label: 'F&O' },
   { id: 'short_term', label: 'Short-term' },
   { id: 'long_term', label: 'Long-term' },
-  { id: 'commodities', label: 'Commodities' },
 ];
 
-export default function CategoryTabs({ active, onSelect }) {
+export default function CategoryTabs({ active, onChange }) {
   return (
-    <div className="flex items-center gap-1 bg-bg-card border border-bg-border rounded-lg p-1 overflow-x-auto">
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onSelect(tab.id)}
-          className={`relative px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 ${
-            active === tab.id
-              ? 'text-white'
-              : 'text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          {active === tab.id && (
-            <motion.div
-              layoutId="activeTab"
-              className="absolute inset-0 bg-white/10 rounded-md"
-              transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
-            />
-          )}
-          <span className="relative z-10">{tab.label}</span>
-        </button>
-      ))}
+    <div
+      className="flex items-center rounded-md overflow-hidden"
+      style={{ border: '1px solid var(--border)' }}
+    >
+      {TABS.map((tab, i) => {
+        const isActive = active === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onChange(tab.id)}
+            className="relative px-5 py-2.5 text-xs uppercase tracking-wider transition-colors"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontWeight: 500,
+              color: isActive ? 'var(--gold)' : 'var(--muted)',
+              background: isActive ? 'rgba(201,168,76,0.06)' : 'transparent',
+              borderRight: i < TABS.length - 1 ? '1px solid var(--border)' : 'none',
+            }}
+          >
+            {tab.label}
+            {isActive && (
+              <span
+                className="absolute bottom-0 left-0 right-0 h-[2px]"
+                style={{ background: 'var(--gold)' }}
+              />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

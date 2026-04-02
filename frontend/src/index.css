@@ -2,140 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
-  body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background-color: #050507;
-    color: #ffffff;
-    overflow-x: hidden;
-  }
-
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: #050507;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #1a1a2e;
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #2a2a4e;
-  }
+:root {
+  --bg: #080808;
+  --surface: #0f0f0f;
+  --card: #131313;
+  --border: #1e1e1e;
+  --border2: #2a2a2a;
+  --gold: #c9a84c;
+  --gold2: #e8c96a;
+  --gold-dim: #7a6330;
+  --green: #00c896;
+  --red: #ff4560;
+  --orange: #ff8c00;
+  --white: #f0ede6;
+  --muted: #666666;
+  --muted2: #444444;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
 }
 
-@layer components {
-  .card {
-    @apply bg-bg-card border border-bg-border rounded-xl p-4 transition-all duration-300;
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-  .card:hover {
-    @apply bg-bg-hover border-accent-green/20;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.06);
-  }
+html { scroll-behavior: smooth; }
 
-  .badge-buy {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-green/15 text-accent-green border border-accent-green/30;
-  }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  .badge-sell {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-red/15 text-accent-red border border-accent-red/30;
-  }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted2); }
 
-  .badge-hold {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30;
-  }
+/* Font utility classes */
+.font-display { font-family: var(--font-display); }
+.font-body { font-family: var(--font-body); }
+.font-mono { font-family: var(--font-mono); }
 
-  .badge-avoid {
-    @apply px-3 py-1 rounded-full text-xs font-bold bg-accent-yellow/15 text-accent-yellow border border-accent-yellow/30;
-  }
+/* Price flash animations */
+@keyframes flashUp {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(0, 200, 150, 0.15); }
+}
+@keyframes flashDown {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(255, 69, 96, 0.15); }
+}
+.flash-up { animation: flashUp 0.5s ease; }
+.flash-down { animation: flashDown 0.5s ease; }
 
-  .price-up {
-    @apply text-accent-green;
-  }
+/* Pulsing gold dot */
+@keyframes goldPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+.gold-pulse { animation: goldPulse 2s ease-in-out infinite; }
 
-  .price-down {
-    @apply text-accent-red;
-  }
+/* Blinking live dot */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.blink { animation: blink 1.5s ease-in-out infinite; }
 
-  /* Neon glow utilities */
-  .glow-green {
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.35), 0 0 60px rgba(0, 255, 136, 0.1);
-  }
-
-  .glow-purple {
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.35), 0 0 60px rgba(168, 85, 247, 0.1);
-  }
-
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.35), 0 0 60px rgba(0, 212, 255, 0.1);
-  }
-
-  .glow-pink {
-    box-shadow: 0 0 20px rgba(255, 0, 128, 0.35), 0 0 60px rgba(255, 0, 128, 0.1);
-  }
-
-  .text-glow-green {
-    text-shadow: 0 0 20px rgba(0, 255, 136, 0.6), 0 0 40px rgba(0, 255, 136, 0.3);
-  }
-
-  .text-glow-purple {
-    text-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    background: linear-gradient(135deg, #00ff88 0%, #00d4ff 50%, #a855f7 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .gradient-text-purple {
-    background: linear-gradient(135deg, #a855f7 0%, #00d4ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  /* Shimmer loading */
-  .shimmer {
-    background: linear-gradient(90deg, #0d0d15 25%, #1a1a2e 50%, #0d0d15 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s linear infinite;
-  }
-
-  /* Grid background pattern */
-  .grid-bg {
-    background-image:
-      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
-  }
-
-  /* Neon border */
-  .neon-border-green {
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.1), inset 0 0 15px rgba(0, 255, 136, 0.05);
-  }
-
-  .neon-border-purple {
-    border: 1px solid rgba(168, 85, 247, 0.3);
-    box-shadow: 0 0 15px rgba(168, 85, 247, 0.1), inset 0 0 15px rgba(168, 85, 247, 0.05);
-  }
+/* Gold divider */
+.gold-divider {
+  width: 40px;
+  height: 2px;
+  background: var(--gold);
+  margin-bottom: 12px;
 }

@@ -1,74 +1,57 @@
-// const API_BASE = '/api';
-// const WS_BASE = `ws://${window.location.hostname}:8000`;
+const BASE = import.meta.env.VITE_API_URL || '/api';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
-const WS_BASE = import.meta.env.VITE_WS_BASE || `ws://${window.location.hostname}:8000`;
+export const getSuggestions = (market, category) =>
+  fetch(`${BASE}/suggestions?market=${market}&category=${category}`).then(r => r.json());
 
-export async function fetchSuggestions(market = 'india', category = 'all') {
-  const res = await fetch(`${API_BASE}/suggestions?market=${market}&category=${category}`);
-  return res.json();
-}
+export const triggerScan = (market) =>
+  fetch(`${BASE}/scan?market=${market}`).then(r => r.json());
 
-export async function fetchAnalysis(ticker, market = 'india') {
-  const res = await fetch(`${API_BASE}/analyze/${encodeURIComponent(ticker)}?market=${market}`);
-  return res.json();
-}
+export const getNews = (market) =>
+  fetch(`${BASE}/news?market=${market}`).then(r => r.json());
 
-export async function fetchNews(market = 'india') {
-  const res = await fetch(`${API_BASE}/news?market=${market}`);
-  return res.json();
-}
+export const getChart = (ticker, period = '3mo', interval = '1d', market = 'india') =>
+  fetch(`${BASE}/chart/${encodeURIComponent(ticker)}?period=${period}&interval=${interval}&market=${market}`).then(r => r.json());
 
-export async function fetchIndices(market = 'india') {
-  const res = await fetch(`${API_BASE}/indices?market=${market}`);
-  return res.json();
-}
+export const getIndices = (market) =>
+  fetch(`${BASE}/indices?market=${market}`).then(r => r.json());
 
-export async function fetchChartData(ticker, period = '3mo', interval = '1d') {
-  const res = await fetch(`${API_BASE}/chart/${encodeURIComponent(ticker)}?period=${period}&interval=${interval}`);
-  return res.json();
-}
+export const getAccuracy = (market, date) => {
+  const params = new URLSearchParams({ market });
+  if (date) params.set('date', date);
+  return fetch(`${BASE}/accuracy?${params}`).then(r => r.json());
+};
 
-export async function triggerScan(market = 'india') {
-  const res = await fetch(`${API_BASE}/scan?market=${market}`);
-  return res.json();
-}
+export const streamAnalysis = (ticker, market, onMessage) => {
+  const es = new EventSource(`${BASE}/stream/analyze/${encodeURIComponent(ticker)}?market=${market}`);
 
-export function createPriceWebSocket(onMessage) {
-  const ws = new WebSocket(`${WS_BASE}/ws/prices`);
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    onMessage(data);
-  };
+  es.addEventListener('status', (e) => {
+    onMessage({ type: 'status', data: JSON.parse(e.data) });
+  });
+  es.addEventListener('indicators', (e) => {
+    onMessage({ type: 'indicators', data: JSON.parse(e.data) });
+  });
+  es.addEventListener('signal', (e) => {
+    onMessage({ type: 'signal', data: JSON.parse(e.data) });
+  });
+  es.addEventListener('complete', (e) => {
+    onMessage({ type: 'complete', data: JSON.parse(e.data) });
+    es.close();
+  });
+  es.addEventListener('error', () => {
+    onMessage({ type: 'error', data: { error: 'Stream error' } });
+    es.close();
+  });
+
+  return es;
+};
+
+export const connectWebSocket = (onMessage) => {
+  const wsUrl = BASE.replace(/^http/, 'ws').replace(/\/api$/, '') + '/ws/prices';
+  const ws = new WebSocket(wsUrl);
+  ws.onmessage = (e) => onMessage(JSON.parse(e.data));
   ws.onerror = (err) => console.error('WebSocket error:', err);
   ws.onclose = () => {
-    // Reconnect after 5 seconds
-    setTimeout(() => createPriceWebSocket(onMessage), 5000);
+    setTimeout(() => connectWebSocket(onMessage), 5000);
   };
   return ws;
-}
-
-export function createAnalysisStream(ticker, market, onEvent) {
-  const url = `${API_BASE}/stream/analyze/${encodeURIComponent(ticker)}?market=${market}`;
-  const eventSource = new EventSource(url);
-
-  eventSource.addEventListener('status', (e) => {
-    onEvent({ type: 'status', data: JSON.parse(e.data) });
-  });
-  eventSource.addEventListener('indicators', (e) => {
-    onEvent({ type: 'indicators', data: JSON.parse(e.data) });
-  });
-  eventSource.addEventListener('signal', (e) => {
-    onEvent({ type: 'signal', data: JSON.parse(e.data) });
-  });
-  eventSource.addEventListener('complete', (e) => {
-    onEvent({ type: 'complete', data: JSON.parse(e.data) });
-    eventSource.close();
-  });
-  eventSource.addEventListener('error', (e) => {
-    onEvent({ type: 'error', data: { error: 'Stream error' } });
-    eventSource.close();
-  });
-
-  return eventSource;
-}
+};

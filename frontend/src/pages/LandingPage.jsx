@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, Brain, TrendingUp, Shield, Zap, Globe,
-  ArrowRight, ChevronDown, BarChart3, Target, Cpu,
+  Brain, TrendingUp, Shield, Zap, Globe,
+  ArrowRight, ChevronDown, BarChart3, Cpu,
 } from 'lucide-react';
 
-/* ─── Particle Network Background ─── */
+/* --- Subtle Particle Field --- */
 function ParticleField() {
   const canvasRef = useRef(null);
 
@@ -23,18 +23,15 @@ function ParticleField() {
     resize();
     window.addEventListener('resize', resize);
 
-    const COLORS = ['#00ff88', '#a855f7', '#00d4ff', '#ff0080'];
-
     class Particle {
       constructor() { this.init(); }
       init() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.vx = (Math.random() - 0.5) * 0.4;
-        this.vy = (Math.random() - 0.5) * 0.4;
-        this.r = Math.random() * 1.5 + 0.5;
-        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-        this.alpha = Math.random() * 0.5 + 0.15;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        this.r = Math.random() * 1.2 + 0.4;
+        this.alpha = Math.random() * 0.3 + 0.1;
       }
       update() {
         this.x += this.vx;
@@ -44,13 +41,13 @@ function ParticleField() {
       draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = '#c9a84c';
         ctx.globalAlpha = this.alpha;
         ctx.fill();
       }
     }
 
-    const particles = Array.from({ length: 90 }, () => new Particle());
+    const particles = Array.from({ length: 60 }, () => new Particle());
 
     function drawConnections() {
       for (let i = 0; i < particles.length; i++) {
@@ -58,12 +55,12 @@ function ParticleField() {
           const dx = particles[i].x - particles[j].x;
           const dy = particles[i].y - particles[j].y;
           const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < 110) {
+          if (d < 100) {
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = '#00ff88';
-            ctx.globalAlpha = (1 - d / 110) * 0.07;
+            ctx.strokeStyle = '#c9a84c';
+            ctx.globalAlpha = (1 - d / 100) * 0.05;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -89,7 +86,7 @@ function ParticleField() {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
 }
 
-/* ─── Animated Counter ─── */
+/* --- Animated Counter --- */
 function AnimCounter({ target, suffix = '', prefix = '' }) {
   const [val, setVal] = useState(0);
   const ref = useRef(null);
@@ -120,37 +117,47 @@ function AnimCounter({ target, suffix = '', prefix = '' }) {
   return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
 }
 
-/* ─── Mock Stock Signal Card ─── */
-function MockCard({ ticker, name, signal, price, change, confidence, color, style }) {
+/* --- Mock Signal Card --- */
+function MockCard({ ticker, name, signal, price, change, confidence, color }) {
   return (
     <div
-      className="rounded-2xl p-5 backdrop-blur-xl"
+      className="rounded-md p-5"
       style={{
-        background: 'rgba(13,13,21,0.92)',
+        background: 'var(--card)',
         border: `1px solid ${color}30`,
-        boxShadow: `0 0 40px ${color}15`,
-        ...style,
+        boxShadow: `0 0 30px ${color}10`,
       }}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="text-white font-bold text-sm">{name}</div>
-          <div className="text-gray-500 text-xs font-mono mt-0.5">{ticker}</div>
+          <div
+            className="text-lg"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+          >
+            {name}
+          </div>
+          <div className="text-xs mt-0.5" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
+            {ticker}
+          </div>
         </div>
         <span
-          className="text-xs font-black px-2.5 py-1 rounded-full"
-          style={{ color, background: `${color}20`, border: `1px solid ${color}40` }}
+          className="text-[10px] uppercase font-medium px-2 py-1 rounded"
+          style={{ color, background: `${color}18`, border: `1px solid ${color}35` }}
         >
           {signal}
         </span>
       </div>
-      <div className="text-2xl font-mono font-black text-white mb-0.5">{price}</div>
-      <div className="text-xs font-mono font-semibold mb-4" style={{ color }}>{change}</div>
-      {/* Fake SVG chart */}
+      <div
+        className="text-2xl mb-0.5"
+        style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
+      >
+        {price}
+      </div>
+      <div className="text-xs mb-4" style={{ fontFamily: 'var(--font-mono)', color }}>{change}</div>
       <svg viewBox="0 0 200 40" className="w-full mb-4">
         <defs>
           <linearGradient id={`g-${ticker}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -162,26 +169,29 @@ function MockCard({ ticker, name, signal, price, change, confidence, color, styl
           points="0,35 30,28 65,22 100,14 130,18 165,8 200,5"
           fill="none"
           stroke={color}
-          strokeWidth="2"
+          strokeWidth="1.5"
           strokeLinecap="round"
-          opacity="0.9"
+          opacity="0.8"
         />
       </svg>
       <div className="flex items-center justify-between text-[10px] mb-1">
-        <span className="text-gray-500">AI Confidence</span>
-        <span className="font-mono text-gray-300">{confidence}%</span>
+        <span style={{ color: 'var(--muted)' }}>AI Confidence</span>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{confidence}%</span>
       </div>
-      <div className="w-full rounded-full h-1.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
+      <div className="w-full rounded-full h-[3px]" style={{ background: 'var(--border)' }}>
         <div
-          className="h-1.5 rounded-full"
-          style={{ width: `${confidence}%`, background: color }}
+          className="h-[3px] rounded-full"
+          style={{
+            width: `${confidence}%`,
+            background: `linear-gradient(90deg, var(--gold-dim), var(--gold))`,
+          }}
         />
       </div>
     </div>
   );
 }
 
-/* ─── Main Landing Page ─── */
+/* --- Main Landing Page --- */
 export default function LandingPage() {
   const navigate = useNavigate();
   const { scrollY } = useScroll();
@@ -193,100 +203,119 @@ export default function LandingPage() {
       icon: Brain,
       title: 'Multi-Agent AI',
       desc: 'CrewAI-powered specialist agents handle technical, fundamental, and sentiment analysis in parallel.',
-      color: '#a855f7',
+      color: 'var(--gold)',
     },
     {
       icon: TrendingUp,
       title: 'Precise Signals',
       desc: 'Every BUY/SELL signal comes with exact entry price, stop-loss, and target with R:R ratio.',
-      color: '#00ff88',
+      color: 'var(--green)',
     },
     {
       icon: Globe,
       title: 'Dual Markets',
       desc: 'Full coverage of Indian NSE and US NYSE/NASDAQ with real-time market status awareness.',
-      color: '#00d4ff',
+      color: 'var(--gold2)',
     },
     {
       icon: Shield,
       title: 'Risk Management',
       desc: 'Automated stop-loss calculation and risk-reward analysis protects every position.',
-      color: '#ff0080',
+      color: 'var(--red)',
     },
     {
       icon: Cpu,
       title: 'Live Scanner',
       desc: 'Continuous AI-driven scanner discovers breakout opportunities before the crowd.',
-      color: '#ffd700',
+      color: 'var(--orange)',
     },
     {
       icon: BarChart3,
       title: 'Deep Technicals',
       desc: 'RSI, MACD, Bollinger Bands, EMA crossovers and 20+ indicators analyzed automatically.',
-      color: '#3b82f6',
+      color: 'var(--green)',
     },
   ];
 
   const stats = [
-    { label: 'Stocks Tracked', value: 500, suffix: '+', color: '#00ff88' },
-    { label: 'AI Agents', value: 5, suffix: '', color: '#a855f7' },
-    { label: 'Indicators', value: 20, suffix: '+', color: '#00d4ff' },
-    { label: 'Avg Confidence', value: 78, suffix: '%', color: '#ffd700' },
+    { label: 'Stocks Tracked', value: 500, suffix: '+' },
+    { label: 'AI Agents', value: 5, suffix: '' },
+    { label: 'Indicators', value: 20, suffix: '+' },
+    { label: 'Avg Confidence', value: 78, suffix: '%' },
   ];
 
   const steps = [
-    { num: '01', title: 'Select Market', desc: 'Choose India (NSE) or US markets and connect live data feeds', color: '#00ff88' },
-    { num: '02', title: 'AI Crew Scans', desc: 'Multi-agent system analyzes hundreds of stocks simultaneously', color: '#a855f7' },
-    { num: '03', title: 'Act on Signals', desc: 'Receive precise BUY/SELL signals with entry, target & stop-loss', color: '#00d4ff' },
+    { num: '01', title: 'Select Market', desc: 'Choose India (NSE) or US markets and connect live data feeds' },
+    { num: '02', title: 'AI Crew Scans', desc: 'Multi-agent system analyzes hundreds of stocks simultaneously' },
+    { num: '03', title: 'Act on Signals', desc: 'Receive precise BUY/SELL signals with entry, target & stop-loss' },
   ];
 
   const techs = ['CrewAI', 'FastAPI', 'React', 'yFinance', 'Groq LLM', 'WebSocket'];
 
   return (
-    <div className="min-h-screen bg-[#050507] overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <ParticleField />
 
-      {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-[#050507]/80 backdrop-blur-xl border-b border-white/5">
+      {/* Navbar */}
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4"
+        style={{
+          background: 'rgba(8,8,8,0.85)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Activity className="w-6 h-6 text-[#00ff88]" />
-          <span className="text-lg font-black text-white tracking-tight">
-            Stock<span className="text-[#00ff88]">Sage</span>
+          <span
+            className="text-[24px] tracking-wide"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)' }}
+          >
+            STOCKSAGE
           </span>
+          <span
+            className="gold-pulse inline-block w-2 h-2 rounded-full"
+            style={{ background: 'var(--gold)' }}
+          />
         </div>
         <motion.button
           onClick={() => navigate('/dashboard')}
-          whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(0,255,136,0.3)' }}
+          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-5 py-2 rounded-xl bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 text-sm font-bold hover:bg-[#00ff88]/20 transition-colors"
+          className="flex items-center gap-2 px-5 py-2 rounded-md text-sm font-medium transition-colors"
+          style={{
+            background: 'rgba(201,168,76,0.12)',
+            color: 'var(--gold)',
+            border: '1px solid rgba(201,168,76,0.3)',
+          }}
         >
           Dashboard <ArrowRight className="w-4 h-4" />
         </motion.button>
       </nav>
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center px-6 pt-20">
-        {/* Ambient glow orbs */}
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-[#00ff88]/4 blur-[130px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-[#a855f7]/4 blur-[130px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full bg-[#00d4ff]/2 blur-[180px] pointer-events-none" />
-
-        {/* Grid overlay */}
-        <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
+        {/* Ambient glow */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[130px] pointer-events-none" style={{ background: 'rgba(201,168,76,0.04)' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full blur-[130px] pointer-events-none" style={{ background: 'rgba(0,200,150,0.03)' }} />
 
         <motion.div
           style={{ y: heroY, opacity: heroOpacity }}
           className="relative z-10 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center"
         >
-          {/* ── Left: Text ── */}
+          {/* Left: Text */}
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/25 text-[#00ff88] text-xs font-bold mb-6"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium mb-6"
+              style={{
+                background: 'rgba(201,168,76,0.1)',
+                border: '1px solid rgba(201,168,76,0.25)',
+                color: 'var(--gold)',
+              }}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full gold-pulse" style={{ background: 'var(--gold)' }} />
               AI-Powered Trading Intelligence
             </motion.div>
 
@@ -294,17 +323,19 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.7 }}
-              className="text-5xl md:text-6xl xl:text-7xl font-black text-white leading-[1.05] mb-6"
+              className="text-5xl md:text-6xl xl:text-7xl leading-[1.05] mb-6"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
             >
-              Trade Smarter<br />
-              <span className="gradient-text">with AI Agents</span>
+              TRADE SMARTER<br />
+              <span style={{ color: 'var(--gold)' }}>WITH AI AGENTS</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.7 }}
-              className="text-gray-400 text-lg leading-relaxed mb-8 max-w-lg"
+              className="text-base leading-relaxed mb-8 max-w-lg"
+              style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}
             >
               A crew of specialized AI agents works around the clock — scanning markets,
               analyzing patterns, and generating precise trading signals for Indian & US stocks.
@@ -318,19 +349,28 @@ export default function LandingPage() {
             >
               <motion.button
                 onClick={() => navigate('/dashboard')}
-                whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(0,255,136,0.5)' }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#00ff88] text-black font-black text-base transition-all"
+                className="flex items-center gap-2 px-8 py-4 rounded-md text-base font-medium transition-all"
+                style={{
+                  background: 'var(--gold)',
+                  color: '#000',
+                  fontFamily: 'var(--font-body)',
+                }}
               >
-                <Activity className="w-5 h-5" />
-                Launch Dashboard
+                Launch Terminal
                 <ArrowRight className="w-5 h-5" />
               </motion.button>
               <motion.button
-                onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-white font-semibold text-base border border-white/10 hover:bg-white/8 transition-all"
+                className="flex items-center gap-2 px-8 py-4 rounded-md text-base font-medium transition-all"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--white)',
+                  border: '1px solid var(--border2)',
+                }}
               >
                 Explore Features
               </motion.button>
@@ -346,7 +386,12 @@ export default function LandingPage() {
               {techs.map((t) => (
                 <span
                   key={t}
-                  className="px-3 py-1 rounded-full bg-white/5 border border-white/8 text-gray-500 text-xs"
+                  className="px-3 py-1 rounded text-xs"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--muted)',
+                  }}
                 >
                   {t}
                 </span>
@@ -354,10 +399,9 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* ── Right: 3D Card Stack ── */}
+          {/* Right: Card Stack */}
           <div className="relative h-[520px] hidden lg:block">
             <div style={{ perspective: '1400px' }} className="relative w-full h-full">
-
               {/* Back card */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -373,7 +417,7 @@ export default function LandingPage() {
                   price="$189.50"
                   change="+1.8% today"
                   confidence={72}
-                  color="#00d4ff"
+                  color="#00c896"
                 />
               </motion.div>
 
@@ -392,7 +436,7 @@ export default function LandingPage() {
                   price="₹2,842"
                   change="+2.4% today"
                   confidence={81}
-                  color="#a855f7"
+                  color="#c9a84c"
                 />
               </motion.div>
 
@@ -415,7 +459,7 @@ export default function LandingPage() {
                   price="₹960.40"
                   change="+3.2% today"
                   confidence={87}
-                  color="#00ff88"
+                  color="#00c896"
                 />
               </motion.div>
 
@@ -426,16 +470,23 @@ export default function LandingPage() {
                 style={{ position: 'absolute', bottom: '12%', left: '2%', zIndex: 4 }}
               >
                 <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{ background: 'rgba(13,13,21,0.95)', border: '1px solid rgba(168,85,247,0.35)', boxShadow: '0 0 20px rgba(168,85,247,0.2)' }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  style={{
+                    background: 'rgba(19,19,19,0.95)',
+                    border: '1px solid rgba(201,168,76,0.3)',
+                    boxShadow: '0 0 20px rgba(201,168,76,0.1)',
+                  }}
                 >
-                  <Brain className="w-4 h-4 text-[#a855f7]" />
-                  <span className="text-xs text-gray-300 font-medium">AI analyzing sentiment...</span>
+                  <Brain className="w-4 h-4" style={{ color: 'var(--gold)' }} />
+                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                    AI analyzing sentiment...
+                  </span>
                   <div className="flex gap-0.5">
                     {[0, 1, 2].map(i => (
                       <motion.div
                         key={i}
-                        className="w-1 h-3 rounded-full bg-[#a855f7]"
+                        className="w-1 h-3 rounded-full"
+                        style={{ background: 'var(--gold)' }}
                         animate={{ scaleY: [0.4, 1, 0.4] }}
                         transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
                       />
@@ -451,12 +502,18 @@ export default function LandingPage() {
                 style={{ position: 'absolute', top: '2%', left: '35%', zIndex: 4 }}
               >
                 <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{ background: 'rgba(13,13,21,0.95)', border: '1px solid rgba(0,212,255,0.35)', boxShadow: '0 0 20px rgba(0,212,255,0.2)' }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md"
+                  style={{
+                    background: 'rgba(19,19,19,0.95)',
+                    border: '1px solid rgba(0,200,150,0.3)',
+                    boxShadow: '0 0 20px rgba(0,200,150,0.1)',
+                  }}
                 >
-                  <Zap className="w-4 h-4 text-[#00d4ff]" />
-                  <span className="text-xs text-gray-300 font-medium">Signal detected</span>
-                  <span className="w-2 h-2 rounded-full bg-[#00d4ff] animate-pulse" />
+                  <Zap className="w-4 h-4" style={{ color: 'var(--green)' }} />
+                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                    Signal detected
+                  </span>
+                  <span className="w-2 h-2 rounded-full blink" style={{ background: 'var(--green)' }} />
                 </div>
               </motion.div>
             </div>
@@ -467,18 +524,19 @@ export default function LandingPage() {
         <motion.button
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          onClick={() => document.getElementById('stats').scrollIntoView({ behavior: 'smooth' })}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-gray-600 hover:text-gray-400 transition-colors z-10"
+          onClick={() => document.getElementById('stats')?.scrollIntoView({ behavior: 'smooth' })}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-colors z-10"
+          style={{ color: 'var(--muted2)' }}
         >
           <span className="text-xs">scroll to explore</span>
           <ChevronDown className="w-4 h-4" />
         </motion.button>
       </section>
 
-      {/* ── Stats ── */}
-      <section id="stats" className="relative py-16 border-y border-white/5 z-10">
+      {/* Stats */}
+      <section id="stats" className="relative py-16 z-10" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {stats.map(({ label, value, suffix, color }) => (
+          {stats.map(({ label, value, suffix }) => (
             <motion.div
               key={label}
               initial={{ opacity: 0, y: 20 }}
@@ -486,18 +544,18 @@ export default function LandingPage() {
               viewport={{ once: true }}
             >
               <div
-                className="text-4xl md:text-5xl font-black mb-2"
-                style={{ color, textShadow: `0 0 30px ${color}50` }}
+                className="text-4xl md:text-5xl mb-2"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)' }}
               >
                 <AnimCounter target={value} suffix={suffix} />
               </div>
-              <div className="text-gray-400 text-sm">{label}</div>
+              <div className="text-sm" style={{ color: 'var(--muted)' }}>{label}</div>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ── Features ── */}
+      {/* Features */}
       <section id="features" className="relative py-24 px-6 z-10">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -506,19 +564,29 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/25 text-[#a855f7] text-xs font-bold mb-5">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium mb-5"
+              style={{
+                background: 'rgba(201,168,76,0.1)',
+                border: '1px solid rgba(201,168,76,0.25)',
+                color: 'var(--gold)',
+              }}
+            >
               <Zap className="w-3 h-3" /> Powered by AI
             </div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4">
-              Everything you need to trade<br />
-              <span className="gradient-text-purple">with confidence</span>
+            <h2
+              className="text-3xl md:text-4xl lg:text-5xl mb-4"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              EVERYTHING YOU NEED TO TRADE<br />
+              <span style={{ color: 'var(--gold)' }}>WITH CONFIDENCE</span>
             </h2>
-            <p className="text-gray-500 max-w-xl mx-auto text-base">
+            <p className="max-w-xl mx-auto text-base" style={{ color: 'var(--muted)' }}>
               From raw market data to actionable signals — StockSage handles all the heavy lifting.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map(({ icon: Icon, title, desc, color }, i) => (
               <motion.div
                 key={title}
@@ -526,27 +594,30 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="relative rounded-2xl p-6 overflow-hidden group cursor-default"
-                style={{ background: '#0d0d15', border: '1px solid rgba(255,255,255,0.06)' }}
+                whileHover={{ y: -4 }}
+                className="relative rounded-md p-6 overflow-hidden group cursor-default transition-all duration-200"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                }}
               >
-                {/* Hover glow overlay */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none"
-                  style={{
-                    background: `radial-gradient(circle at 50% 0%, ${color}12, transparent 65%)`,
-                    border: `1px solid ${color}22`,
-                  }}
-                />
                 <div className="relative z-10">
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: `${color}15`, border: `1px solid ${color}30` }}
+                    className="w-12 h-12 rounded-md flex items-center justify-center mb-4"
+                    style={{
+                      background: 'rgba(201,168,76,0.08)',
+                      border: '1px solid var(--border2)',
+                    }}
                   >
                     <Icon className="w-6 h-6" style={{ color }} />
                   </div>
-                  <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                  <h3
+                    className="text-lg mb-2"
+                    style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+                  >
+                    {title.toUpperCase()}
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -554,8 +625,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section className="relative py-24 px-6 border-t border-white/5 z-10">
+      {/* How it works */}
+      <section className="relative py-24 px-6 z-10" style={{ borderTop: '1px solid var(--border)' }}>
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -563,19 +634,22 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-3">
-              How it <span className="text-[#00ff88] text-glow-green">works</span>
+            <h2
+              className="text-3xl md:text-4xl mb-3"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            >
+              HOW IT <span style={{ color: 'var(--gold)' }}>WORKS</span>
             </h2>
-            <p className="text-gray-500">Three simple steps from market open to signal</p>
+            <p style={{ color: 'var(--muted)' }}>Three simple steps from market open to signal</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 relative">
             {/* Connecting line */}
             <div
               className="hidden md:block absolute top-8 left-[22%] right-[22%] h-px"
-              style={{ background: 'linear-gradient(90deg, #00ff8840, #a855f740, #00d4ff40)' }}
+              style={{ background: 'linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-dim))' }}
             />
-            {steps.map(({ num, title, desc, color }, i) => (
+            {steps.map(({ num, title, desc }, i) => (
               <motion.div
                 key={num}
                 initial={{ opacity: 0, y: 30 }}
@@ -585,30 +659,34 @@ export default function LandingPage() {
                 className="text-center relative"
               >
                 <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black mx-auto mb-6 relative z-10"
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-xl mx-auto mb-6 relative z-10"
                   style={{
-                    background: `${color}12`,
-                    border: `2px solid ${color}50`,
-                    color,
-                    boxShadow: `0 0 30px ${color}20`,
+                    fontFamily: 'var(--font-display)',
+                    background: 'rgba(201,168,76,0.1)',
+                    border: '2px solid rgba(201,168,76,0.4)',
+                    color: 'var(--gold)',
                   }}
                 >
                   {num}
                 </div>
-                <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                <h3
+                  className="text-lg mb-2"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+                >
+                  {title.toUpperCase()}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
+      {/* CTA */}
       <section className="relative py-28 px-6 overflow-hidden z-10">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[700px] h-[400px] rounded-full bg-[#00ff88]/5 blur-[120px]" />
+          <div className="w-[700px] h-[400px] rounded-full blur-[120px]" style={{ background: 'rgba(201,168,76,0.04)' }} />
         </div>
-        <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -616,51 +694,37 @@ export default function LandingPage() {
           viewport={{ once: true }}
           className="max-w-3xl mx-auto text-center relative z-10"
         >
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-5 leading-tight">
-            Ready to trade<br />
-            <span className="gradient-text">smarter?</span>
+          <h2
+            className="text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+          >
+            READY TO TRADE<br />
+            <span style={{ color: 'var(--gold)' }}>SMARTER?</span>
           </h2>
-          <p className="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
+          <p className="text-lg mb-10 max-w-xl mx-auto" style={{ color: 'var(--muted)' }}>
             Join traders using AI-powered signals to find opportunities in Indian and US markets every day.
           </p>
           <motion.button
             onClick={() => navigate('/dashboard')}
-            whileHover={{ scale: 1.05, boxShadow: '0 0 60px rgba(0,255,136,0.55)' }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl bg-[#00ff88] text-black font-black text-lg transition-all"
+            className="inline-flex items-center gap-2 px-10 py-4 rounded-md text-lg font-medium"
+            style={{
+              background: 'var(--gold)',
+              color: '#000',
+              fontFamily: 'var(--font-body)',
+            }}
           >
-            <Activity className="w-6 h-6" />
-            Launch Dashboard
-            <ArrowRight className="w-6 h-6" />
+            Launch Terminal <ArrowRight className="w-5 h-5" />
           </motion.button>
-          <p className="text-gray-600 text-sm mt-6">Not financial advice. Trade at your own risk.</p>
         </motion.div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="relative border-t border-white/5 px-6 py-8 z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[#00ff88]" />
-            <span className="font-black text-white">Stock<span className="text-[#00ff88]">Sage</span></span>
-          </div>
-          <p className="text-gray-600 text-sm">© 2026 StockSage — AI-powered trading signals. Not financial advice.</p>
-          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span>Built by</span>
-            <a
-              href="https://shrijithsm.tech"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-[#00ff88] transition-colors font-medium"
-            >
-              Shrijith S Menon
-            </a>
-            <span className="text-gray-700">·</span>
-            <a href="https://linkedin.com/in/shrijithsm" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#00d4ff] transition-colors">LinkedIn</a>
-            <span className="text-gray-700">·</span>
-            <a href="https://github.com/ShrijithSM" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#a855f7] transition-colors">GitHub</a>
-          </div>
-        </div>
+      {/* Footer */}
+      <footer className="py-6 px-6 text-center" style={{ borderTop: '1px solid var(--border)' }}>
+        <p className="text-xs" style={{ color: 'var(--muted2)' }}>
+          StockSage — AI-powered trading signals. Not financial advice. Trade at your own risk.
+        </p>
       </footer>
     </div>
   );

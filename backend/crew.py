@@ -53,9 +53,6 @@ def get_name(ticker: str, market: str) -> str:
 
 def categorize_signal(ticker: str, indicators: dict, market: str) -> tuple[str, str]:
     """Determine category and timeframe for a signal."""
-    if ticker in COMMODITY_NAME_MAP:
-        return "commodities", "1-2 Weeks"
-
     rsi = indicators.get("rsi", 50)
     ema_9 = indicators.get("ema_9", 0)
     ema_21 = indicators.get("ema_21", 0)
@@ -71,11 +68,6 @@ def categorize_signal(ticker: str, indicators: dict, market: str) -> tuple[str, 
     # Intraday: only when the market is currently tradable.
     if atr_pct > 0.03 and is_market_open(market):
         return "intraday", "Today"
-
-    # F&O: strong directional momentum — trade via derivatives (puts/calls/futures)
-    # Checked BEFORE long_term so oversold/overbought stocks get actionable signals
-    if rsi < 30 or rsi > 70:
-        return "fno", "1-4 Weeks"
 
     # Long-term: all EMAs aligned in a sustained trend, moderate RSI
     if ema_50 and ema_9 and ema_21:
@@ -282,12 +274,10 @@ def run_full_scan(market: str = "india") -> list[dict]:
     """Run a full market scan and generate signals for top candidates."""
     logger.info(f"Starting full market scan for {market}")
     candidates = scan_market(market)
-    commodity_candidates = scan_commodities() if market == "us" else []
 
-    all_candidates = candidates + commodity_candidates
     signals = []
 
-    for candidate in all_candidates:
+    for candidate in candidates:
         ticker = candidate["ticker"]
         signal = build_signal_from_data(ticker, market)
         if signal:

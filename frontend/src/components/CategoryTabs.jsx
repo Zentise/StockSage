@@ -7,7 +7,7 @@ const TABS = [
   { id: 'long_term', label: 'Long-term' },
 ];
 
-export default function CategoryTabs({ active, onChange }) {
+export default function CategoryTabs({ active, onChange, counts = {} }) {
   return (
     <div
       className="flex items-center rounded-md overflow-hidden"
@@ -15,6 +15,7 @@ export default function CategoryTabs({ active, onChange }) {
     >
       {TABS.map((tab, i) => {
         const isActive = active === tab.id;
+        const count = counts[tab.id];
         return (
           <button
             key={tab.id}
@@ -29,6 +30,14 @@ export default function CategoryTabs({ active, onChange }) {
             }}
           >
             {tab.label}
+            {count != null && (
+              <span
+                className="ml-1.5 text-[9px]"
+                style={{ opacity: 0.6 }}
+              >
+                {count}
+              </span>
+            )}
             {isActive && (
               <span
                 className="absolute bottom-0 left-0 right-0 h-[2px]"

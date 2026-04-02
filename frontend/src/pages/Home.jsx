@@ -11,7 +11,7 @@ import { getSuggestions, triggerScan, getNews, getIndices, connectWebSocket } fr
 export default function Home({ market, setMarket }) {
   const navigate = useNavigate();
   const [category, setCategory] = useState('all');
-  const [cards, setCards] = useState([]);
+  const [allCards, setAllCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [news, setNews] = useState([]);
   const [indices, setIndices] = useState([]);
@@ -19,21 +19,26 @@ export default function Home({ market, setMarket }) {
   const [closedReason, setClosedReason] = useState(null);
   const refreshTimer = useRef(null);
 
-  // Fetch suggestions
+  // Derived: filter cards client-side based on active category tab
+  const cards = category === 'all'
+    ? allCards
+    : allCards.filter(s => s.category === category);
+
+  // Fetch ALL suggestions (no category filter) and store in allCards
   const fetchCards = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getSuggestions(market, category);
-      setCards(data.suggestions || data.signals || data || []);
+      const data = await getSuggestions(market, 'all');
+      setAllCards(data.suggestions || data.signals || data || []);
       setClosedReason(data.closed_reason || null);
       setLastScan(new Date());
     } catch (err) {
       console.error('Failed to fetch suggestions:', err);
-      setCards([]);
+      setAllCards([]);
     } finally {
       setLoading(false);
     }
-  }, [market, category]);
+  }, [market]);
 
   // Trigger a real backend scan then refresh cards
   const handleRefresh = useCallback(async () => {
@@ -41,7 +46,7 @@ export default function Home({ market, setMarket }) {
       setLoading(true);
       const scanResult = await triggerScan(market);
       if (scanResult.closed_reason) {
-        setCards([]);
+        setAllCards([]);
         setClosedReason(scanResult.closed_reason);
         setLastScan(new Date());
         return;
@@ -49,11 +54,7 @@ export default function Home({ market, setMarket }) {
       // Use the scan result directly (it includes fresh suggestions)
       const suggestions = scanResult.suggestions || [];
       setClosedReason(null);
-      if (category !== 'all') {
-        setCards(suggestions.filter(s => s.category === category));
-      } else {
-        setCards(suggestions);
-      }
+      setAllCards(suggestions);
       setLastScan(new Date());
     } catch (err) {
       console.error('Failed to trigger scan:', err);
@@ -62,11 +63,11 @@ export default function Home({ market, setMarket }) {
     } finally {
       setLoading(false);
     }
-  }, [market, category, fetchCards]);
+  }, [market, fetchCards]);
 
   // Clear cards immediately when market changes so stale data doesn't linger
   useEffect(() => {
-    setCards([]);
+    setAllCards([]);
     setClosedReason(null);
   }, [market]);
 
@@ -116,6 +117,14 @@ export default function Home({ market, setMarket }) {
   const avgConfidence = cards.length > 0
     ? Math.round(cards.reduce((sum, c) => sum + (c.confidence || c.confidence_score || 0), 0) / cards.length)
     : 0;
+
+  // Category counts for tab badges
+  const categoryCounts = {
+    all: allCards.length,
+    intraday: allCards.filter(s => s.category === 'intraday').length,
+    short_term: allCards.filter(s => s.category === 'short_term').length,
+    long_term: allCards.filter(s => s.category === 'long_term').length,
+  };
 
   const now = new Date();
   const hour = now.getHours();
@@ -184,7 +193,7 @@ export default function Home({ market, setMarket }) {
 
           {/* Category tabs */}
           <div className="mb-5">
-            <CategoryTabs active={category} onChange={setCategory} />
+            <CategoryTabs active={category} onChange={setCategory} counts={categoryCounts} />
           </div>
 
           {/* Cards grid */}

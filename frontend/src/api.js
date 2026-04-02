@@ -46,7 +46,21 @@ export const streamAnalysis = (ticker, market, onMessage) => {
 };
 
 export const connectWebSocket = (onMessage) => {
-  const wsUrl = BASE.replace(/^http/, 'ws').replace(/\/api$/, '') + '/ws/prices';
+  // In production, BASE is /api (proxied by Vercel), so derive WS URL from the backend directly
+  let wsUrl;
+  if (BASE.startsWith('http')) {
+    wsUrl = BASE.replace(/^http/, 'ws').replace(/\/api$/, '') + '/ws/prices';
+  } else {
+    // BASE is relative like /api — use Render backend directly for WebSocket
+    const renderWs = import.meta.env.VITE_WS_URL || '';
+    if (renderWs) {
+      wsUrl = renderWs;
+    } else {
+      // Fallback: construct from current host (works in dev with Vite proxy)
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${proto}//${window.location.host}/ws/prices`;
+    }
+  }
   const ws = new WebSocket(wsUrl);
   ws.onmessage = (e) => onMessage(JSON.parse(e.data));
   ws.onerror = (err) => console.error('WebSocket error:', err);

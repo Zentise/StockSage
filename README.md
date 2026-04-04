@@ -2,6 +2,8 @@
 
 An AI-powered stock trading signal generator with a professional dark-themed UI. Five specialized AI agents work together to scan markets, analyze technicals, evaluate fundamentals, gauge sentiment, and produce actionable BUY / SELL / AVOID signals with entry, stop-loss, and target prices.
 
+**Live Link:** [TheStockSage](https://thestocksage.vercel.app/)
+
 ![StockSage](https://img.shields.io/badge/StockSage-AI%20Trading%20Terminal-00ff88?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
@@ -20,6 +22,13 @@ An AI-powered stock trading signal generator with a professional dark-themed UI.
 - **Dark Theme** — TradingView-style UI with green/red/yellow accent colors
 
 ---
+
+### Architecture
+
+![alt text](assets/architecture.svg)
+
+---
+
 
 ## How the AI Agents Work
 

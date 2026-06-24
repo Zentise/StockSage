@@ -65,10 +65,11 @@ export default function Home({ market, setMarket }) {
     }
   }, [market, fetchCards]);
 
-  // Clear cards immediately when market changes so stale data doesn't linger
+  // Clear cards + reset category when market changes so stale data doesn't linger
   useEffect(() => {
     setAllCards([]);
     setClosedReason(null);
+    setCategory('all');
   }, [market]);
 
   // Fetch news
@@ -203,11 +204,11 @@ export default function Home({ market, setMarket }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
               className="grid gap-4"
               style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}
             >
-              {loading && cards.length === 0 ? (
+              {loading && allCards.length === 0 ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}

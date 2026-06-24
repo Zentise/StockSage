@@ -18,9 +18,13 @@ except Exception:          # ImportError / ModuleNotFoundError
 from groq import Groq
 
 from backend.tools.market_scanner import scan_market, scan_commodities
-from backend.tools.indicator_tools import compute_indicators, compute_entry_sl_target, detect_ema_crossover, detect_candlestick_patterns, get_signal_timestamp
-from backend.tools.yfinance_tools import get_historical_data, get_stock_info, get_stock_news
+from backend.tools.indicator_tools import (
+    compute_indicators, compute_entry_sl_target, detect_ema_crossover,
+    detect_candlestick_patterns, get_signal_timestamp, multi_confirmation_check,
+)
+from backend.tools.yfinance_tools import get_historical_data, get_stock_info, get_stock_news, fetch_ohlcv
 from backend.tools.sentiment_tools import score_sentiment_simple
+from backend.tools.market_trend import get_market_trend, should_take_signal
 from backend.data.nse_stocks import TICKER_NAME_MAP as NSE_NAMES
 from backend.data.nyse_stocks import TICKER_NAME_MAP as US_NAMES, COMMODITY_NAME_MAP
 from backend.market_hours import is_market_open
@@ -78,16 +82,83 @@ def categorize_signal(ticker: str, indicators: dict, market: str) -> tuple[str, 
     return "short_term", "1-2 Weeks"
 
 
+def validate_signal_levels(signal: dict) -> dict:
+    """Sanity-check SL and Target: ensure they are realistic and on the correct side.
+
+    Corrects bad values produced by the data pipeline or LLM hallucinations.
+    """
+    entry = signal.get("entry", 0)
+    sl = signal.get("sl", 0)
+    target = signal.get("target", 0)
+    direction = signal.get("signal", "BUY")
+    category = signal.get("category", "intraday")
+
+    if not entry:
+        return signal
+
+    # Max % move allowed per category
+    max_moves = {
+        "intraday":    {"sl": 0.008, "target": 0.016},
+        "fno":         {"sl": 0.012, "target": 0.025},
+        "short_term":  {"sl": 0.04,  "target": 0.08},
+        "long_term":   {"sl": 0.08,  "target": 0.30},
+        "commodities": {"sl": 0.015, "target": 0.03},
+    }
+    limits = max_moves.get(category, max_moves["short_term"])
+
+    if direction == "BUY":
+        if sl >= entry:
+            sl = round(entry * (1 - limits["sl"] * 0.6), 2)
+        if target <= entry:
+            target = round(entry * (1 + limits["target"] * 0.6), 2)
+        if entry and (entry - sl) / entry > limits["sl"]:
+            sl = round(entry * (1 - limits["sl"]), 2)
+        if entry and (target - entry) / entry > limits["target"]:
+            target = round(entry * (1 + limits["target"]), 2)
+    elif direction == "SELL":
+        if sl <= entry:
+            sl = round(entry * (1 + limits["sl"] * 0.6), 2)
+        if target >= entry:
+            target = round(entry * (1 - limits["target"] * 0.6), 2)
+        if entry and (sl - entry) / entry > limits["sl"]:
+            sl = round(entry * (1 + limits["sl"]), 2)
+        if entry and (entry - target) / entry > limits["target"]:
+            target = round(entry * (1 - limits["target"]), 2)
+
+    sl_dist = abs(entry - sl)
+    target_dist = abs(target - entry)
+    rr = round(target_dist / sl_dist, 1) if sl_dist > 0 else 0
+
+    signal["sl"] = sl
+    signal["target"] = target
+    signal["rr_ratio"] = str(rr)
+    return signal
+
+
 def build_signal_from_data(ticker: str, market: str) -> dict | None:
     """Build a trading signal using pure data analysis (no LLM needed for data processing)."""
     try:
-        df = get_historical_data(ticker, period="3mo", interval="1d")
-        if df.empty or len(df) < 20:
+        # Pass 1: daily data for category determination (fast, cached)
+        df_daily = get_historical_data(ticker, period="3mo", interval="1d")
+        if df_daily.empty or len(df_daily) < 20:
             return None
 
-        indicators = compute_indicators(df)
-        if not indicators:
+        indicators_init = compute_indicators(df_daily)
+        if not indicators_init:
             return None
+
+        # Determine category using daily indicators and market-open status
+        category, timeframe = categorize_signal(ticker, indicators_init, market)
+
+        # Pass 2: fetch category-appropriate candles for accurate signal computation
+        df = fetch_ohlcv(ticker, category)
+        if df.empty or len(df) < 20:
+            df = df_daily
+            indicators = indicators_init
+        else:
+            indicators = compute_indicators(df)
+            if not indicators:
+                indicators = indicators_init
 
         # Determine signal direction
         rsi = indicators.get("rsi", 50)
@@ -152,7 +223,7 @@ def build_signal_from_data(ticker: str, market: str) -> dict | None:
         signal = "BUY" if bullish_score >= bearish_score else "SELL"
         confidence = min(95, max(30, (max(bullish_score, bearish_score) * 12) + 20))
 
-        category, timeframe = categorize_signal(ticker, indicators, market)
+        # category and timeframe already determined in two-pass fetch above
 
         levels = compute_entry_sl_target(indicators, signal, category=category)
 
@@ -170,7 +241,7 @@ def build_signal_from_data(ticker: str, market: str) -> dict | None:
 
         strategy_str = " + ".join(strategies[:3]) if strategies else "Trend Following"
 
-        return {
+        raw_signal = {
             "ticker": ticker,
             "name": get_name(ticker, market),
             "category": category,
@@ -189,6 +260,7 @@ def build_signal_from_data(ticker: str, market: str) -> dict | None:
             "indicators": indicators,
             **get_signal_timestamp(market),
         }
+        return validate_signal_levels(raw_signal)
     except Exception as e:
         logger.error(f"Failed to build signal for {ticker}: {e}")
         return None
@@ -271,28 +343,83 @@ def run_crew_analysis(ticker: str, market: str = "india") -> dict | None:
 
 
 def run_full_scan(market: str = "india") -> list[dict]:
-    """Run a full market scan and generate signals for top candidates."""
+    """Run a full market scan and generate signals for top candidates.
+
+    Applies three quality gates before accepting a signal:
+    1. Multi-confirmation: ≥3 of 4 core technical checks must agree.
+    2. Market-trend filter (intraday/F&O only): no contra-trend trades.
+    3. Confidence threshold: ≥70% required; relaxed to 60% per category if
+       fewer than 3 signals would survive otherwise.
+    """
     logger.info(f"Starting full market scan for {market}")
     candidates = scan_market(market)
 
-    signals = []
+    # Fetch broad market trend once for the whole scan
+    market_trend_data = get_market_trend(market)
+    market_trend = market_trend_data["trend"]
+    logger.info(f"Market trend for {market}: {market_trend} — {market_trend_data.get('reason', '')}")
 
+    # First pass: build all raw signals (with indicators still attached)
+    raw_signals = []
     for candidate in candidates:
         ticker = candidate["ticker"]
         signal = build_signal_from_data(ticker, market)
         if signal:
-            # Quick reasoning without full CrewAI
             signal["reasoning"] = f"{signal['signal']} signal based on {signal['strategy']}."
-            signal.pop("indicators", None)
-            signal.pop("sentiment_score", None)
-            signals.append(signal)
+            raw_signals.append(signal)
 
-    # Sort: BUY first, then SELL, then AVOID
+    # Apply filters; keep rejected-only-by-confidence signals separately per category
+    HIGH_CONF = 70
+    LOW_CONF = 60
+    accepted: list[dict] = []
+    fallback_by_cat: dict[str, list[dict]] = {}
+
+    for signal in raw_signals:
+        indicators = signal.get("indicators", {})
+        sig_type = signal.get("signal", "BUY")
+        sig_cat = signal.get("category", "short_term")
+
+        # Multi-confirmation gate
+        confirmation = multi_confirmation_check(indicators, sig_type, sig_cat)
+        if not confirmation["passes"]:
+            continue
+
+        # Market trend gate (intraday and F&O only)
+        if sig_cat in ("intraday", "fno"):
+            if not should_take_signal(sig_type, market_trend):
+                continue
+
+        # Confidence gate
+        conf = signal.get("confidence", 0)
+        signal["confirmation_score"] = confirmation["confirmation_score"]
+        signal["confirmation_reasons"] = confirmation["reasons"]
+        signal["market_trend"] = market_trend
+
+        if conf >= HIGH_CONF:
+            accepted.append(signal)
+        elif conf >= LOW_CONF:
+            fallback_by_cat.setdefault(sig_cat, []).append(signal)
+
+    # Count accepted per category; fill up to 3 from fallback if needed
+    accepted_by_cat: dict[str, int] = {}
+    for s in accepted:
+        cat = s.get("category", "short_term")
+        accepted_by_cat[cat] = accepted_by_cat.get(cat, 0) + 1
+
+    for cat, fallbacks in fallback_by_cat.items():
+        needed = max(0, 3 - accepted_by_cat.get(cat, 0))
+        accepted.extend(fallbacks[:needed])
+
+    # Strip internal fields, sort and return
     signal_priority = {"BUY": 0, "SELL": 1, "AVOID": 2}
-    signals.sort(key=lambda s: (signal_priority.get(s.get("signal"), 3), -s.get("confidence", 0)))
+    for s in accepted:
+        s.pop("indicators", None)
+        s.pop("sentiment_score", None)
 
-    logger.info(f"Scan complete: {len(signals)} signals generated")
-    return signals
+    accepted.sort(key=lambda s: (signal_priority.get(s.get("signal"), 3), -s.get("confidence", 0)))
+
+    logger.info(f"Scan complete: {len(accepted)} high-quality signals (market: {market_trend})")
+    return accepted
 
 
 async def run_full_scan_with_reasoning(market: str = "india") -> list[dict]:

@@ -37,9 +37,12 @@ export const streamAnalysis = (ticker, market, onMessage) => {
     onMessage({ type: 'complete', data: JSON.parse(e.data) });
     es.close();
   });
-  es.addEventListener('error', () => {
-    onMessage({ type: 'error', data: { error: 'Stream error' } });
-    es.close();
+  es.addEventListener('error', (e) => {
+    // readyState 2 = CLOSED (permanent failure); 0 = CONNECTING (auto-reconnect, ignore)
+    if (es.readyState === EventSource.CLOSED) {
+      onMessage({ type: 'error', data: { error: 'Connection to analysis server failed' } });
+      es.close();
+    }
   });
 
   return es;

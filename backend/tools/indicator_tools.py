@@ -62,6 +62,12 @@ def compute_indicators(df: pd.DataFrame) -> dict:
         except Exception:
             result["vwap"] = round(float(close.iloc[-1]), 2)
 
+        # Volume stats
+        result["volume"] = float(volume.iloc[-1]) if not volume.empty else 0
+        result["avg_volume"] = round(float(volume.tail(20).mean()), 0) if len(volume) >= 20 else result["volume"]
+        result["volume_ratio"] = round(result["volume"] / result["avg_volume"], 2) if result["avg_volume"] > 0 else 1.0
+        result["high_volume"] = result["volume_ratio"] >= 1.2
+
         # Current price
         result["current_price"] = round(float(close.iloc[-1]), 2)
         result["prev_close"] = round(float(close.iloc[-2]), 2) if len(close) > 1 else result["current_price"]
@@ -168,6 +174,115 @@ def compute_entry_sl_target(indicators: dict, signal: str, category: str = "intr
     rr = round(abs(target - entry) / abs(sl - entry), 1) if abs(sl - entry) > 0 else 0
 
     return {"entry": entry, "sl": sl, "target": target, "rr_ratio": str(rr)}
+
+
+def multi_confirmation_check(indicators: dict, signal: str, category: str = "intraday") -> dict:
+    """Require multiple indicator confirmations before approving a signal.
+
+    Returns confirmation score and whether signal passes the minimum threshold
+    of 3 out of 4 core checks. A fifth volume check contributes to score only.
+    """
+    confirmations = []
+    reasons = []
+
+    ema_9 = indicators.get("ema_9", 0)
+    ema_21 = indicators.get("ema_21", 0)
+    rsi = indicators.get("rsi", 50)
+    macd_hist = indicators.get("macd_histogram", 0)
+    current_price = indicators.get("current_price", 0)
+    vwap = indicators.get("vwap", current_price)
+    volume = indicators.get("volume", 0)
+    avg_volume = indicators.get("avg_volume", volume)
+
+    if signal == "BUY":
+        # Check 1: EMA trend
+        if ema_9 > ema_21:
+            confirmations.append(True)
+            reasons.append("EMA9 > EMA21 (bullish trend)")
+        else:
+            confirmations.append(False)
+            reasons.append("EMA9 < EMA21 (no bullish trend)")
+
+        # Check 2: RSI has room to run, not overbought
+        if 45 <= rsi <= 68:
+            confirmations.append(True)
+            reasons.append(f"RSI {rsi} in healthy buy zone")
+        else:
+            confirmations.append(False)
+            reasons.append(f"RSI {rsi} outside buy zone (need 45-68)")
+
+        # Check 3: Price above VWAP
+        if current_price > vwap:
+            confirmations.append(True)
+            reasons.append("Price above VWAP (institutional bullish bias)")
+        else:
+            confirmations.append(False)
+            reasons.append("Price below VWAP (institutional bearish bias)")
+
+        # Check 4: MACD momentum
+        if macd_hist > 0:
+            confirmations.append(True)
+            reasons.append("MACD histogram positive (bullish momentum)")
+        else:
+            confirmations.append(False)
+            reasons.append("MACD histogram negative (no momentum)")
+
+    elif signal == "SELL":
+        if ema_9 < ema_21:
+            confirmations.append(True)
+            reasons.append("EMA9 < EMA21 (bearish trend)")
+        else:
+            confirmations.append(False)
+            reasons.append("EMA9 > EMA21 (no bearish trend)")
+
+        if 32 <= rsi <= 55:
+            confirmations.append(True)
+            reasons.append(f"RSI {rsi} in healthy sell zone")
+        else:
+            confirmations.append(False)
+            reasons.append(f"RSI {rsi} outside sell zone (need 32-55)")
+
+        if current_price < vwap:
+            confirmations.append(True)
+            reasons.append("Price below VWAP (institutional bearish bias)")
+        else:
+            confirmations.append(False)
+            reasons.append("Price above VWAP (institutional bullish bias)")
+
+        if macd_hist < 0:
+            confirmations.append(True)
+            reasons.append("MACD histogram negative (bearish momentum)")
+        else:
+            confirmations.append(False)
+            reasons.append("MACD histogram positive (no bearish momentum)")
+
+    else:
+        # AVOID or unknown signal — skip confirmation, treat as passing
+        return {"passes": True, "confirmation_score": 50, "confirmed": 0, "total": 0, "reasons": []}
+
+    # Check 5: Volume conviction (bonus — not part of core 4)
+    if avg_volume > 0 and volume >= avg_volume * 1.2:
+        confirmations.append(True)
+        reasons.append("Volume 20%+ above average (strong conviction)")
+    else:
+        confirmations.append(False)
+        reasons.append("Volume below average (weak conviction)")
+
+    confirmed_count = sum(confirmations)
+    total_checks = len(confirmations)
+    confirmation_score = round((confirmed_count / total_checks) * 100)
+
+    # Minimum 3 of 4 core checks required (volume is bonus, not in threshold)
+    core_confirmed = sum(confirmations[:4])
+    passes = core_confirmed >= 3
+
+    return {
+        "passes": passes,
+        "confirmation_score": confirmation_score,
+        "confirmed": confirmed_count,
+        "total": total_checks,
+        "reasons": reasons,
+    }
 
 
 def get_signal_timestamp(market: str = "india") -> dict:

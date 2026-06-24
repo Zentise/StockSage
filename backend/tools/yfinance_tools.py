@@ -117,6 +117,30 @@ def get_historical_data(ticker: str, period: str = "3mo", interval: str = "1d") 
     return df
 
 
+def fetch_ohlcv(ticker: str, category: str = "short_term") -> pd.DataFrame:
+    """Fetch OHLCV data with correct interval per trading category.
+
+    Intraday and F&O use 15-minute candles over 5 days.
+    Swing/positional and commodities use daily candles.
+    Long-term uses 2 years of daily candles for full trend context.
+    """
+    configs = {
+        "intraday":    {"period": "5d",  "interval": "15m"},
+        "fno":         {"period": "5d",  "interval": "15m"},
+        "short_term":  {"period": "6mo", "interval": "1d"},
+        "long_term":   {"period": "2y",  "interval": "1d"},
+        "commodities": {"period": "6mo", "interval": "1d"},
+    }
+    cfg = configs.get(category, configs["short_term"])
+    try:
+        df = get_historical_data(ticker, period=cfg["period"], interval=cfg["interval"])
+        df = df.dropna()
+        return df
+    except Exception as e:
+        logger.warning(f"Failed to fetch OHLCV for {ticker} (category={category}): {e}")
+        return pd.DataFrame()
+
+
 def get_live_price(ticker: str) -> dict:
     """Get latest price and daily change for a ticker."""
     key = f"price_{ticker}"

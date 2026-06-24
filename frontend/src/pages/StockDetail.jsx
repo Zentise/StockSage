@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { createChart, ColorType } from 'lightweight-charts';
 import TopBar from '../components/TopBar';
 import { getChart, getSuggestions, streamAnalysis } from '../api';
+import { RefreshCw } from 'lucide-react';
 
 export default function StockDetail({ market, setMarket }) {
   const { ticker } = useParams();
@@ -29,9 +30,9 @@ export default function StockDetail({ market, setMarket }) {
       .catch(console.error);
   }, [ticker, isIntraday, market]);
 
-  // Find stock info from suggestions
+  // Find stock info from ALL suggestions (not just intraday)
   useEffect(() => {
-    getSuggestions(market, 'intraday')
+    getSuggestions(market, 'all')
       .then((data) => {
         const all = data.suggestions || data.signals || data || [];
         const found = all.find(
@@ -117,39 +118,69 @@ export default function StockDetail({ market, setMarket }) {
     };
   }, [chartData, isIntraday]);
 
-  // Stream analysis
+  // Ref to hold the active EventSource so we can close it on cleanup
+  const esRef = useRef(null);
+
+  // Launch a fresh analysis stream — can be called on demand too
   const startAnalysis = useCallback(() => {
-    if (streaming) return;
+    // Close any existing stream first
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
+    }
     setStreaming(true);
     setStreamLogs([]);
     setIndicators(null);
 
     const es = streamAnalysis(ticker, market, (msg) => {
       if (msg.type === 'status') {
-        setStreamLogs((prev) => [...prev, { text: msg.data.step || msg.data.message || msg.data.status || JSON.stringify(msg.data), type: 'status' }]);
+        setStreamLogs((prev) => [
+          ...prev,
+          { text: msg.data.step || msg.data.message || msg.data.status || JSON.stringify(msg.data), type: 'status' },
+        ]);
       } else if (msg.type === 'indicators') {
         setIndicators(msg.data);
-        setStreamLogs((prev) => [...prev, { text: '✓ Indicators received', type: 'data' }]);
+        setStreamLogs((prev) => [...prev, { text: '✓ Technical indicators computed', type: 'data' }]);
       } else if (msg.type === 'signal') {
-        setStockInfo((prev) => ({ ...prev, ...msg.data }));
-        setStreamLogs((prev) => [...prev, { text: `Signal: ${msg.data.signal || msg.data.action}`, type: 'signal' }]);
+        setStockInfo((prev) => ({ ...(prev || {}), ...msg.data }));
+        setStreamLogs((prev) => [
+          ...prev,
+          { text: `⚡ Signal: ${msg.data.signal || msg.data.action} — ${msg.data.strategy || ''}`, type: 'signal' },
+        ]);
+        if (msg.data.reasoning) {
+          setStreamLogs((prev) => [
+            ...prev,
+            { text: `🧠 ${msg.data.reasoning}`, type: 'reasoning' },
+          ]);
+        }
       } else if (msg.type === 'complete') {
         setStreamLogs((prev) => [...prev, { text: '✓ Analysis complete', type: 'complete' }]);
         setStreaming(false);
+        esRef.current = null;
       } else if (msg.type === 'error') {
-        setStreamLogs((prev) => [...prev, { text: '✗ Error: ' + (msg.data.error || 'Unknown'), type: 'error' }]);
+        setStreamLogs((prev) => [
+          ...prev,
+          { text: '✗ ' + (msg.data.error || 'Stream error'), type: 'error' },
+        ]);
         setStreaming(false);
+        esRef.current = null;
       }
     });
 
-    return () => es.close();
-  }, [ticker, market, streaming]);
+    esRef.current = es;
+  }, [ticker, market]);
 
-  // Auto-start analysis
+  // Auto-start analysis on mount (ticker/market are stable by this point)
   useEffect(() => {
-    const cleanup = startAnalysis();
-    return cleanup;
-  }, []);
+    startAnalysis();
+    return () => {
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, market]);
 
   const signal = (stockInfo?.signal || stockInfo?.action || '').toUpperCase();
   const price = stockInfo?.price || stockInfo?.ltp || stockInfo?.current_price || 0;
@@ -359,19 +390,20 @@ export default function StockDetail({ market, setMarket }) {
               </h3>
               <div className="h-[1px] mt-1" style={{ background: 'var(--gold)', width: '40px' }} />
             </div>
-            {!streaming && (
-              <button
-                onClick={startAnalysis}
-                className="px-3 py-1.5 rounded text-[11px] uppercase tracking-wider transition-colors"
-                style={{
-                  background: 'rgba(201,168,76,0.1)',
-                  color: 'var(--gold)',
-                  border: '1px solid rgba(201,168,76,0.25)',
-                }}
-              >
-                Re-analyze
-              </button>
-            )}
+            <button
+              onClick={startAnalysis}
+              disabled={streaming}
+              className="px-3 py-1.5 rounded text-[11px] uppercase tracking-wider transition-colors flex items-center gap-1.5"
+              style={{
+                background: streaming ? 'rgba(201,168,76,0.04)' : 'rgba(201,168,76,0.1)',
+                color: streaming ? 'rgba(201,168,76,0.4)' : 'var(--gold)',
+                border: '1px solid rgba(201,168,76,0.25)',
+                cursor: streaming ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <RefreshCw size={10} className={streaming ? 'animate-spin' : ''} />
+              {streaming ? 'Analyzing...' : 'Re-analyze'}
+            </button>
           </div>
 
           <div
@@ -384,30 +416,37 @@ export default function StockDetail({ market, setMarket }) {
           >
             {streamLogs.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                {streaming ? 'Connecting to analysis stream...' : 'No analysis data yet.'}
+                {streaming ? 'Connecting to analysis stream...' : 'No analysis data. Click Re-analyze to start.'}
               </p>
             ) : (
-              streamLogs.map((log, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="py-1 text-xs leading-relaxed"
-                  style={{
-                    color: log.type === 'error' ? 'var(--red)'
-                      : log.type === 'complete' ? 'var(--gold)'
-                      : log.type === 'signal' ? 'var(--gold)'
-                      : 'var(--green)',
-                  }}
-                >
-                  <span style={{ color: 'var(--muted2)' }}>[{String(i + 1).padStart(2, '0')}]</span>{' '}
-                  {log.text}
-                </motion.div>
-              ))
-            )}
-            {streaming && (
-              <span className="inline-block w-2 h-3 ml-1 blink" style={{ background: 'var(--green)' }} />
+              <div>
+                {streamLogs.map((log, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="py-1 text-xs leading-relaxed"
+                    style={{
+                      color: log.type === 'error' ? 'var(--red)'
+                        : log.type === 'complete' ? 'var(--gold)'
+                        : log.type === 'signal' ? '#a8d8a8'
+                        : log.type === 'reasoning' ? 'var(--white)'
+                        : log.type === 'data' ? 'var(--green)'
+                        : '#7ec8a8',
+                      borderBottom: log.type === 'reasoning' ? '1px solid var(--border)' : 'none',
+                      paddingBottom: log.type === 'reasoning' ? '8px' : undefined,
+                      marginBottom: log.type === 'reasoning' ? '4px' : undefined,
+                    }}
+                  >
+                    <span style={{ color: 'var(--muted2)', marginRight: '6px' }}>[{String(i + 1).padStart(2, '0')}]</span>
+                    {log.text}
+                  </motion.div>
+                ))}
+                {streaming && (
+                  <span className="inline-block w-2 h-3 ml-1 blink" style={{ background: 'var(--green)' }} />
+                )}
+              </div>
             )}
           </div>
         </div>

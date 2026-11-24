@@ -1,0 +1,4948 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "StockSage API",
+  "version": "2.0.0"
+ },
+ "paths": {
+  "/status": {
+   "get": {
+    "summary": "Get Status",
+    "operationId": "get_status_status_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Status"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/auth": {
+   "get": {
+    "summary": "Get Auth",
+    "description": "Does this browser hold the owner's key? Used to show or hide the private pages.",
+    "operationId": "get_auth_auth_get",
+    "parameters": [
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/settings": {
+   "get": {
+    "summary": "Get Settings",
+    "operationId": "get_settings_settings_get",
+    "parameters": [
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SettingsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/setups": {
+   "get": {
+    "summary": "Get Setups",
+    "operationId": "get_setups_setups_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SetupInfo"
+         },
+         "title": "Response Get Setups Setups Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/search": {
+   "get": {
+    "summary": "Search Universe",
+    "operationId": "search_universe_search_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SearchItem"
+         },
+         "type": "array",
+         "title": "Response Search Universe Search Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/market": {
+   "get": {
+    "summary": "Get Market",
+    "operationId": "get_market_market_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MarketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/news": {
+   "get": {
+    "summary": "Get News",
+    "operationId": "get_news_news_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NewsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/signals": {
+   "get": {
+    "summary": "Get Signals",
+    "operationId": "get_signals_signals_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SignalsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/scan": {
+   "post": {
+    "summary": "Post Scan",
+    "operationId": "post_scan_scan_post",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ScanOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/record": {
+   "get": {
+    "summary": "Get Record",
+    "operationId": "get_record_record_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     },
+     {
+      "name": "engine",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "pattern": "^v[12]$",
+       "default": "v2",
+       "title": "Engine"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RecordOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/replay": {
+   "get": {
+    "summary": "Get Replay",
+    "operationId": "get_replay_replay_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReplayOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}": {
+   "get": {
+    "summary": "Get Stock",
+    "operationId": "get_stock_stock__ticker__get",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StockOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}/candles": {
+   "get": {
+    "summary": "Get Candles",
+    "operationId": "get_candles_stock__ticker__candles_get",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     },
+     {
+      "name": "tf",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "pattern": "^(1D|1W|1M|6M|2Y)$",
+       "default": "6M",
+       "title": "Tf"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CandlesOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}/fundamentals": {
+   "get": {
+    "summary": "Get Fundamentals",
+    "operationId": "get_fundamentals_stock__ticker__fundamentals_get",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Fundamentals"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}/news": {
+   "get": {
+    "summary": "Get Stock News",
+    "operationId": "get_stock_news_stock__ticker__news_get",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NewsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}/note": {
+   "post": {
+    "summary": "Post Note",
+    "operationId": "post_note_stock__ticker__note_post",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NoteOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}/debate": {
+   "post": {
+    "summary": "Post Debate",
+    "operationId": "post_debate_stock__ticker__debate_post",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DebateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/chat": {
+   "post": {
+    "summary": "Post Chat",
+    "operationId": "post_chat_chat_post",
+    "parameters": [
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChatIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ChatOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/stock/{ticker}/odds": {
+   "get": {
+    "summary": "Get Odds",
+    "operationId": "get_odds_stock__ticker__odds_get",
+    "parameters": [
+     {
+      "name": "ticker",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+       "title": "Ticker"
+      }
+     },
+     {
+      "name": "entry",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "exclusiveMinimum": 0,
+       "title": "Entry"
+      }
+     },
+     {
+      "name": "stop",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "exclusiveMinimum": 0,
+       "title": "Stop"
+      }
+     },
+     {
+      "name": "target",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "number",
+       "exclusiveMinimum": 0,
+       "title": "Target"
+      }
+     },
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 60,
+       "minimum": 2,
+       "default": 10,
+       "title": "Days"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OddsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/portfolio": {
+   "get": {
+    "summary": "Get Portfolio",
+    "operationId": "get_portfolio_portfolio_get",
+    "parameters": [
+     {
+      "name": "paper",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Paper"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PortfolioOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/positions": {
+   "post": {
+    "summary": "Post Position",
+    "operationId": "post_position_positions_post",
+    "parameters": [
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PositionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PositionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/positions/{pid}/close": {
+   "post": {
+    "summary": "Post Close",
+    "operationId": "post_close_positions__pid__close_post",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CloseIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PositionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/positions/{pid}": {
+   "post": {
+    "summary": "Post Position Patch",
+    "operationId": "post_position_patch_positions__pid__post",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PositionPatch"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PositionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "summary": "Delete Position",
+    "operationId": "delete_position_positions__pid__delete",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/alerts": {
+   "get": {
+    "summary": "Get Alerts",
+    "operationId": "get_alerts_alerts_get",
+    "parameters": [
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AlertOut"
+         },
+         "title": "Response Get Alerts Alerts Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "summary": "Post Alert",
+    "operationId": "post_alert_alerts_post",
+    "parameters": [
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AlertIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AlertOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/alerts/{aid}": {
+   "delete": {
+    "summary": "Delete Alert",
+    "operationId": "delete_alert_alerts__aid__delete",
+    "parameters": [
+     {
+      "name": "aid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Aid"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/brief": {
+   "get": {
+    "summary": "Get Brief",
+    "operationId": "get_brief_brief_get",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BriefOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/brief/send": {
+   "post": {
+    "summary": "Post Brief Send",
+    "operationId": "post_brief_send_brief_send_post",
+    "parameters": [
+     {
+      "name": "market",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "india",
+        "us"
+       ],
+       "type": "string",
+       "default": "india",
+       "title": "Market"
+      }
+     },
+     {
+      "name": "x-owner-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Owner-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AlertIn": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+      "title": "Ticker"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "above",
+       "below"
+      ],
+      "title": "Kind"
+     },
+     "level": {
+      "type": "number",
+      "exclusiveMinimum": 0.0,
+      "title": "Level"
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "kind",
+     "level"
+    ],
+    "title": "AlertIn"
+   },
+   "AlertOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "level": {
+      "type": "number",
+      "title": "Level"
+     },
+     "note": {
+      "type": "string",
+      "title": "Note"
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     },
+     "fired_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fired At"
+     },
+     "fired_price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fired Price"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "market",
+     "ticker",
+     "kind",
+     "level",
+     "note",
+     "active",
+     "created_at",
+     "fired_at",
+     "fired_price"
+    ],
+    "title": "AlertOut"
+   },
+   "AuthOut": {
+    "properties": {
+     "required": {
+      "type": "boolean",
+      "title": "Required"
+     },
+     "ok": {
+      "type": "boolean",
+      "title": "Ok"
+     }
+    },
+    "type": "object",
+    "required": [
+     "required",
+     "ok"
+    ],
+    "title": "AuthOut"
+   },
+   "BriefAlert": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "level": {
+      "type": "number",
+      "title": "Level"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "kind",
+     "level"
+    ],
+    "title": "BriefAlert"
+   },
+   "BriefMover": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "price": {
+      "type": "number",
+      "title": "Price"
+     },
+     "change_pct": {
+      "type": "number",
+      "title": "Change Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "price",
+     "change_pct"
+    ],
+    "title": "BriefMover"
+   },
+   "BriefOut": {
+    "properties": {
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "opens_at": {
+      "type": "string",
+      "title": "Opens At"
+     },
+     "indices": {
+      "items": {
+       "$ref": "#/components/schemas/BriefMover"
+      },
+      "type": "array",
+      "title": "Indices"
+     },
+     "advancing": {
+      "type": "integer",
+      "title": "Advancing"
+     },
+     "declining": {
+      "type": "integer",
+      "title": "Declining"
+     },
+     "gainers": {
+      "items": {
+       "$ref": "#/components/schemas/BriefMover"
+      },
+      "type": "array",
+      "title": "Gainers"
+     },
+     "losers": {
+      "items": {
+       "$ref": "#/components/schemas/BriefMover"
+      },
+      "type": "array",
+      "title": "Losers"
+     },
+     "setups": {
+      "items": {
+       "$ref": "#/components/schemas/BriefSetup"
+      },
+      "type": "array",
+      "title": "Setups"
+     },
+     "positions": {
+      "items": {
+       "$ref": "#/components/schemas/BriefPosition"
+      },
+      "type": "array",
+      "title": "Positions"
+     },
+     "alerts": {
+      "items": {
+       "$ref": "#/components/schemas/BriefAlert"
+      },
+      "type": "array",
+      "title": "Alerts"
+     },
+     "record": {
+      "$ref": "#/components/schemas/BriefRecord"
+     },
+     "headlines": {
+      "items": {
+       "$ref": "#/components/schemas/NewsItem"
+      },
+      "type": "array",
+      "title": "Headlines"
+     },
+     "telegram": {
+      "type": "boolean",
+      "title": "Telegram"
+     }
+    },
+    "type": "object",
+    "required": [
+     "market",
+     "date",
+     "status",
+     "opens_at",
+     "indices",
+     "advancing",
+     "declining",
+     "gainers",
+     "losers",
+     "setups",
+     "positions",
+     "alerts",
+     "record",
+     "headlines",
+     "telegram"
+    ],
+    "title": "BriefOut"
+   },
+   "BriefPosition": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "qty": {
+      "type": "number",
+      "title": "Qty"
+     },
+     "entry": {
+      "type": "number",
+      "title": "Entry"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price"
+     },
+     "pnl": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pnl"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R"
+     },
+     "paper": {
+      "type": "boolean",
+      "title": "Paper"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "qty",
+     "entry",
+     "stop",
+     "target",
+     "price",
+     "pnl",
+     "r",
+     "paper"
+    ],
+    "title": "BriefPosition"
+   },
+   "BriefRecord": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "paired_n": {
+      "type": "integer",
+      "title": "Paired N"
+     },
+     "edge_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge R"
+     },
+     "edge_low": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge Low"
+     },
+     "edge_high": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge High"
+     }
+    },
+    "type": "object",
+    "required": [
+     "n",
+     "paired_n",
+     "edge_r",
+     "edge_low",
+     "edge_high"
+    ],
+    "title": "BriefRecord"
+   },
+   "BriefSetup": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "setup": {
+      "type": "string",
+      "title": "Setup"
+     },
+     "entry": {
+      "type": "number",
+      "title": "Entry"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "validated": {
+      "type": "boolean",
+      "title": "Validated"
+     },
+     "pending": {
+      "type": "boolean",
+      "title": "Pending"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "setup",
+     "entry",
+     "stop",
+     "target",
+     "validated",
+     "pending"
+    ],
+    "title": "BriefSetup"
+   },
+   "Bucket": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "target": {
+      "type": "integer",
+      "title": "Target"
+     },
+     "stop": {
+      "type": "integer",
+      "title": "Stop"
+     },
+     "other": {
+      "type": "integer",
+      "title": "Other"
+     },
+     "avg_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg R"
+     },
+     "paired_n": {
+      "type": "integer",
+      "title": "Paired N"
+     },
+     "paired_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Paired R"
+     },
+     "control_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Control R"
+     },
+     "edge_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge R"
+     },
+     "edge_low": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge Low"
+     },
+     "edge_high": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge High"
+     }
+    },
+    "type": "object",
+    "required": [
+     "n",
+     "target",
+     "stop",
+     "other",
+     "avg_r",
+     "paired_n",
+     "paired_r",
+     "control_r",
+     "edge_r",
+     "edge_low",
+     "edge_high"
+    ],
+    "title": "Bucket"
+   },
+   "Candle": {
+    "properties": {
+     "time": {
+      "type": "integer",
+      "title": "Time"
+     },
+     "open": {
+      "type": "number",
+      "title": "Open"
+     },
+     "high": {
+      "type": "number",
+      "title": "High"
+     },
+     "low": {
+      "type": "number",
+      "title": "Low"
+     },
+     "close": {
+      "type": "number",
+      "title": "Close"
+     },
+     "volume": {
+      "type": "number",
+      "title": "Volume"
+     }
+    },
+    "type": "object",
+    "required": [
+     "time",
+     "open",
+     "high",
+     "low",
+     "close",
+     "volume"
+    ],
+    "title": "Candle"
+   },
+   "CandlesOut": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "timeframe": {
+      "type": "string",
+      "title": "Timeframe"
+     },
+     "intraday": {
+      "type": "boolean",
+      "title": "Intraday"
+     },
+     "candles": {
+      "items": {
+       "$ref": "#/components/schemas/Candle"
+      },
+      "type": "array",
+      "title": "Candles"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "timeframe",
+     "intraday",
+     "candles"
+    ],
+    "title": "CandlesOut"
+   },
+   "ChatIn": {
+    "properties": {
+     "ticker": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^[A-Z0-9^&.=\\-]{1,20}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ticker"
+     },
+     "market": {
+      "type": "string",
+      "enum": [
+       "india",
+       "us"
+      ],
+      "title": "Market",
+      "default": "india"
+     },
+     "messages": {
+      "items": {
+       "$ref": "#/components/schemas/ChatMessage"
+      },
+      "type": "array",
+      "maxItems": 12,
+      "minItems": 1,
+      "title": "Messages"
+     }
+    },
+    "type": "object",
+    "required": [
+     "messages"
+    ],
+    "title": "ChatIn"
+   },
+   "ChatMessage": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "enum": [
+       "user",
+       "assistant"
+      ],
+      "title": "Role"
+     },
+     "content": {
+      "type": "string",
+      "maxLength": 600,
+      "minLength": 1,
+      "title": "Content"
+     }
+    },
+    "type": "object",
+    "required": [
+     "role",
+     "content"
+    ],
+    "title": "ChatMessage"
+   },
+   "ChatOut": {
+    "properties": {
+     "answer": {
+      "type": "string",
+      "title": "Answer"
+     },
+     "removed": {
+      "type": "integer",
+      "title": "Removed"
+     },
+     "model": {
+      "type": "string",
+      "title": "Model"
+     }
+    },
+    "type": "object",
+    "required": [
+     "answer",
+     "removed",
+     "model"
+    ],
+    "title": "ChatOut"
+   },
+   "CloseIn": {
+    "properties": {
+     "price": {
+      "type": "number",
+      "exclusiveMinimum": 0.0,
+      "title": "Price"
+     },
+     "reason": {
+      "type": "string",
+      "enum": [
+       "manual",
+       "stop",
+       "target"
+      ],
+      "title": "Reason",
+      "default": "manual"
+     },
+     "lesson": {
+      "type": "string",
+      "maxLength": 600,
+      "title": "Lesson",
+      "default": ""
+     },
+     "mistake": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 24
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mistake"
+     }
+    },
+    "type": "object",
+    "required": [
+     "price"
+    ],
+    "title": "CloseIn"
+   },
+   "Constituent": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "sector": {
+      "type": "string",
+      "title": "Sector"
+     },
+     "price": {
+      "type": "number",
+      "title": "Price"
+     },
+     "change_pct": {
+      "type": "number",
+      "title": "Change Pct"
+     },
+     "spark": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Spark"
+     },
+     "turnover": {
+      "type": "number",
+      "title": "Turnover"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "sector",
+     "price",
+     "change_pct",
+     "spark",
+     "turnover"
+    ],
+    "title": "Constituent"
+   },
+   "CurvePoint": {
+    "properties": {
+     "at": {
+      "type": "string",
+      "title": "At"
+     },
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "r": {
+      "type": "number",
+      "title": "R"
+     },
+     "total": {
+      "type": "number",
+      "title": "Total"
+     },
+     "control": {
+      "type": "number",
+      "title": "Control"
+     }
+    },
+    "type": "object",
+    "required": [
+     "at",
+     "ticker",
+     "r",
+     "total",
+     "control"
+    ],
+    "title": "CurvePoint"
+   },
+   "DebateOut": {
+    "properties": {
+     "bull": {
+      "$ref": "#/components/schemas/DebateSide"
+     },
+     "bear": {
+      "$ref": "#/components/schemas/DebateSide"
+     },
+     "summary": {
+      "type": "string",
+      "title": "Summary"
+     },
+     "agree": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Agree"
+     },
+     "clash": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Clash"
+     },
+     "check_first": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Check First"
+     },
+     "removed": {
+      "type": "integer",
+      "title": "Removed"
+     },
+     "model": {
+      "type": "string",
+      "title": "Model"
+     },
+     "cached": {
+      "type": "boolean",
+      "title": "Cached"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "bull",
+     "bear",
+     "summary",
+     "agree",
+     "clash",
+     "check_first",
+     "removed",
+     "model",
+     "cached",
+     "created_at"
+    ],
+    "title": "DebateOut"
+   },
+   "DebateSide": {
+    "properties": {
+     "case": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Case"
+     },
+     "wrong_if": {
+      "type": "string",
+      "title": "Wrong If"
+     }
+    },
+    "type": "object",
+    "required": [
+     "case",
+     "wrong_if"
+    ],
+    "title": "DebateSide"
+   },
+   "Evidence": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "weight": {
+      "type": "integer",
+      "title": "Weight"
+     }
+    },
+    "type": "object",
+    "required": [
+     "text",
+     "weight"
+    ],
+    "title": "Evidence"
+   },
+   "Fundamentals": {
+    "properties": {
+     "market_cap": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Market Cap"
+     },
+     "pe": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pe"
+     },
+     "forward_pe": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Forward Pe"
+     },
+     "pb": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pb"
+     },
+     "eps": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Eps"
+     },
+     "roe": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Roe"
+     },
+     "profit_margin": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Profit Margin"
+     },
+     "debt_to_equity": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Debt To Equity"
+     },
+     "revenue_growth": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revenue Growth"
+     },
+     "earnings_growth": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Earnings Growth"
+     },
+     "dividend_yield": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dividend Yield"
+     },
+     "beta": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Beta"
+     },
+     "insider_holding": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Insider Holding"
+     },
+     "sector": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sector"
+     },
+     "industry": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Industry"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     },
+     "earnings_date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Earnings Date"
+     }
+    },
+    "type": "object",
+    "title": "Fundamentals"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "JournalPoint": {
+    "properties": {
+     "at": {
+      "type": "string",
+      "title": "At"
+     },
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "r": {
+      "type": "number",
+      "title": "R"
+     },
+     "total": {
+      "type": "number",
+      "title": "Total"
+     }
+    },
+    "type": "object",
+    "required": [
+     "at",
+     "ticker",
+     "r",
+     "total"
+    ],
+    "title": "JournalPoint"
+   },
+   "JournalStats": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "with_r": {
+      "type": "integer",
+      "title": "With R"
+     },
+     "win_rate": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Win Rate"
+     },
+     "avg_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg R"
+     },
+     "total_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Total R"
+     },
+     "avg_win_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Win R"
+     },
+     "avg_loss_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Loss R"
+     }
+    },
+    "type": "object",
+    "required": [
+     "n",
+     "with_r",
+     "win_rate",
+     "avg_r",
+     "total_r",
+     "avg_win_r",
+     "avg_loss_r"
+    ],
+    "title": "JournalStats"
+   },
+   "LiveSignal": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "engine": {
+      "type": "string",
+      "title": "Engine"
+     },
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "direction": {
+      "type": "string",
+      "enum": [
+       "BUY",
+       "SELL",
+       "AVOID"
+      ],
+      "title": "Direction"
+     },
+     "category": {
+      "type": "string",
+      "enum": [
+       "intraday",
+       "short_term",
+       "long_term"
+      ],
+      "title": "Category"
+     },
+     "setup": {
+      "type": "string",
+      "title": "Setup",
+      "default": "confluence"
+     },
+     "timeframe": {
+      "type": "string",
+      "title": "Timeframe"
+     },
+     "entry": {
+      "type": "number",
+      "title": "Entry"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "evidence_for": {
+      "items": {
+       "$ref": "#/components/schemas/Evidence"
+      },
+      "type": "array",
+      "title": "Evidence For"
+     },
+     "evidence_against": {
+      "items": {
+       "$ref": "#/components/schemas/Evidence"
+      },
+      "type": "array",
+      "title": "Evidence Against"
+     },
+     "pending": {
+      "type": "boolean",
+      "title": "Pending"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     },
+     "expires_at": {
+      "type": "string",
+      "title": "Expires At"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "fill_price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fill Price"
+     },
+     "exit_price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit Price"
+     },
+     "exit_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit At"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R"
+     },
+     "best_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Best R"
+     },
+     "worst_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Worst R"
+     },
+     "control_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Control R"
+     },
+     "quote": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Quote"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "engine",
+     "market",
+     "ticker",
+     "name",
+     "direction",
+     "category",
+     "timeframe",
+     "entry",
+     "stop",
+     "target",
+     "evidence_for",
+     "evidence_against",
+     "pending",
+     "created_at",
+     "expires_at",
+     "status",
+     "fill_price",
+     "exit_price",
+     "exit_at",
+     "r",
+     "best_r",
+     "worst_r",
+     "control_r"
+    ],
+    "title": "LiveSignal"
+   },
+   "MarketOut": {
+    "properties": {
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "as_of": {
+      "type": "integer",
+      "title": "As Of"
+     },
+     "indices": {
+      "items": {
+       "$ref": "#/components/schemas/Quote"
+      },
+      "type": "array",
+      "title": "Indices"
+     },
+     "stocks": {
+      "items": {
+       "$ref": "#/components/schemas/Constituent"
+      },
+      "type": "array",
+      "title": "Stocks"
+     },
+     "sectors": {
+      "items": {
+       "$ref": "#/components/schemas/Sector"
+      },
+      "type": "array",
+      "title": "Sectors"
+     },
+     "advancing": {
+      "type": "integer",
+      "title": "Advancing"
+     },
+     "declining": {
+      "type": "integer",
+      "title": "Declining"
+     },
+     "missing": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Missing"
+     }
+    },
+    "type": "object",
+    "required": [
+     "market",
+     "as_of",
+     "indices",
+     "stocks",
+     "sectors",
+     "advancing",
+     "declining",
+     "missing"
+    ],
+    "title": "MarketOut"
+   },
+   "NewsItem": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "url": {
+      "type": "string",
+      "title": "Url"
+     },
+     "published": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Published"
+     }
+    },
+    "type": "object",
+    "required": [
+     "title",
+     "source",
+     "url",
+     "published"
+    ],
+    "title": "NewsItem"
+   },
+   "NewsOut": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/NewsItem"
+      },
+      "type": "array",
+      "title": "Items"
+     }
+    },
+    "type": "object",
+    "required": [
+     "items"
+    ],
+    "title": "NewsOut"
+   },
+   "NoteOut": {
+    "properties": {
+     "summary": {
+      "type": "string",
+      "title": "Summary"
+     },
+     "bull": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Bull"
+     },
+     "bear": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Bear"
+     },
+     "watch": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Watch"
+     },
+     "missing": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Missing"
+     },
+     "removed": {
+      "type": "integer",
+      "title": "Removed"
+     },
+     "model": {
+      "type": "string",
+      "title": "Model"
+     },
+     "cached": {
+      "type": "boolean",
+      "title": "Cached"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "summary",
+     "bull",
+     "bear",
+     "watch",
+     "missing",
+     "removed",
+     "model",
+     "cached",
+     "created_at"
+    ],
+    "title": "NoteOut"
+   },
+   "OddsOut": {
+    "properties": {
+     "paths": {
+      "type": "integer",
+      "title": "Paths"
+     },
+     "days": {
+      "type": "integer",
+      "title": "Days"
+     },
+     "history_bars": {
+      "type": "integer",
+      "title": "History Bars"
+     },
+     "p_target": {
+      "type": "number",
+      "title": "P Target"
+     },
+     "p_stop": {
+      "type": "number",
+      "title": "P Stop"
+     },
+     "p_neither": {
+      "type": "number",
+      "title": "P Neither"
+     },
+     "avg_r": {
+      "type": "number",
+      "title": "Avg R"
+     },
+     "median_days_to_exit": {
+      "type": "integer",
+      "title": "Median Days To Exit"
+     },
+     "prices": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Prices"
+     },
+     "density": {
+      "items": {
+       "items": {
+        "type": "number"
+       },
+       "type": "array"
+      },
+      "type": "array",
+      "title": "Density"
+     },
+     "bands": {
+      "items": {
+       "items": {
+        "type": "number"
+       },
+       "type": "array"
+      },
+      "type": "array",
+      "title": "Bands"
+     }
+    },
+    "type": "object",
+    "required": [
+     "paths",
+     "days",
+     "history_bars",
+     "p_target",
+     "p_stop",
+     "p_neither",
+     "avg_r",
+     "median_days_to_exit",
+     "prices",
+     "density",
+     "bands"
+    ],
+    "title": "OddsOut"
+   },
+   "PortfolioOut": {
+    "properties": {
+     "open": {
+      "items": {
+       "$ref": "#/components/schemas/PositionOut"
+      },
+      "type": "array",
+      "title": "Open"
+     },
+     "closed": {
+      "items": {
+       "$ref": "#/components/schemas/PositionOut"
+      },
+      "type": "array",
+      "title": "Closed"
+     },
+     "open_risk": {
+      "type": "number",
+      "title": "Open Risk"
+     },
+     "open_pnl": {
+      "type": "number",
+      "title": "Open Pnl"
+     },
+     "stats": {
+      "$ref": "#/components/schemas/JournalStats"
+     },
+     "curve": {
+      "items": {
+       "$ref": "#/components/schemas/JournalPoint"
+      },
+      "type": "array",
+      "title": "Curve"
+     },
+     "by_mistake": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/JournalStats"
+      },
+      "type": "object",
+      "title": "By Mistake"
+     },
+     "by_setup": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/JournalStats"
+      },
+      "type": "object",
+      "title": "By Setup"
+     },
+     "mistakes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Mistakes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "open",
+     "closed",
+     "open_risk",
+     "open_pnl",
+     "stats",
+     "curve",
+     "by_mistake",
+     "by_setup",
+     "mistakes"
+    ],
+    "title": "PortfolioOut"
+   },
+   "PositionIn": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "pattern": "^[A-Z0-9^&.=\\-]{1,20}$",
+      "title": "Ticker"
+     },
+     "qty": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Qty"
+     },
+     "entry": {
+      "type": "number",
+      "exclusiveMinimum": 0.0,
+      "title": "Entry"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "paper": {
+      "type": "boolean",
+      "title": "Paper",
+      "default": true
+     },
+     "why": {
+      "type": "string",
+      "maxLength": 600,
+      "title": "Why",
+      "default": ""
+     },
+     "signal_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Signal Id"
+     },
+     "setup": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 16
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Setup"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "qty",
+     "entry"
+    ],
+    "title": "PositionIn"
+   },
+   "PositionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "paper": {
+      "type": "boolean",
+      "title": "Paper"
+     },
+     "qty": {
+      "type": "number",
+      "title": "Qty"
+     },
+     "entry": {
+      "type": "number",
+      "title": "Entry"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "opened_at": {
+      "type": "string",
+      "title": "Opened At"
+     },
+     "setup": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Setup"
+     },
+     "why": {
+      "type": "string",
+      "title": "Why"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "exit_price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit Price"
+     },
+     "closed_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Closed At"
+     },
+     "close_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Close Reason"
+     },
+     "lesson": {
+      "type": "string",
+      "title": "Lesson"
+     },
+     "mistake": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mistake"
+     },
+     "price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price"
+     },
+     "pnl": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pnl"
+     },
+     "pnl_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pnl Pct"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R"
+     },
+     "risk": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Risk"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "market",
+     "ticker",
+     "name",
+     "paper",
+     "qty",
+     "entry",
+     "stop",
+     "target",
+     "opened_at",
+     "setup",
+     "why",
+     "status",
+     "exit_price",
+     "closed_at",
+     "close_reason",
+     "lesson",
+     "mistake",
+     "price",
+     "pnl",
+     "pnl_pct",
+     "r",
+     "risk"
+    ],
+    "title": "PositionOut"
+   },
+   "PositionPatch": {
+    "properties": {
+     "lesson": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 600
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lesson"
+     },
+     "mistake": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 24
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mistake"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     }
+    },
+    "type": "object",
+    "title": "PositionPatch"
+   },
+   "Quote": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "price": {
+      "type": "number",
+      "title": "Price"
+     },
+     "prev_close": {
+      "type": "number",
+      "title": "Prev Close"
+     },
+     "change_abs": {
+      "type": "number",
+      "title": "Change Abs"
+     },
+     "change_pct": {
+      "type": "number",
+      "title": "Change Pct"
+     },
+     "day_high": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Day High"
+     },
+     "day_low": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Day Low"
+     },
+     "high_52w": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "High 52W"
+     },
+     "low_52w": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Low 52W"
+     },
+     "volume": {
+      "type": "number",
+      "title": "Volume",
+      "default": 0
+     },
+     "as_of": {
+      "type": "integer",
+      "title": "As Of"
+     },
+     "spark": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Spark",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "price",
+     "prev_close",
+     "change_abs",
+     "change_pct",
+     "as_of"
+    ],
+    "title": "Quote"
+   },
+   "RecordOut": {
+    "properties": {
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "engine": {
+      "type": "string",
+      "title": "Engine"
+     },
+     "since": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Since"
+     },
+     "active": {
+      "type": "integer",
+      "title": "Active"
+     },
+     "void": {
+      "type": "integer",
+      "title": "Void"
+     },
+     "overall": {
+      "$ref": "#/components/schemas/Bucket"
+     },
+     "by_category": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/Bucket"
+      },
+      "type": "object",
+      "title": "By Category"
+     },
+     "by_setup": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/SetupRecord"
+      },
+      "type": "object",
+      "title": "By Setup"
+     },
+     "curve": {
+      "items": {
+       "$ref": "#/components/schemas/CurvePoint"
+      },
+      "type": "array",
+      "title": "Curve"
+     },
+     "trades": {
+      "items": {
+       "$ref": "#/components/schemas/SignalOut"
+      },
+      "type": "array",
+      "title": "Trades"
+     }
+    },
+    "type": "object",
+    "required": [
+     "market",
+     "engine",
+     "since",
+     "active",
+     "void",
+     "overall",
+     "by_category",
+     "by_setup",
+     "curve",
+     "trades"
+    ],
+    "title": "RecordOut"
+   },
+   "ReplayOut": {
+    "properties": {
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "ran": {
+      "type": "string",
+      "title": "Ran"
+     },
+     "stocks": {
+      "type": "integer",
+      "title": "Stocks"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "overall": {
+      "$ref": "#/components/schemas/ReplaySummary"
+     },
+     "by_category": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/ReplaySummary"
+      },
+      "type": "object",
+      "title": "By Category"
+     },
+     "by_year": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/ReplaySummary"
+      },
+      "type": "object",
+      "title": "By Year"
+     },
+     "by_setup": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/SetupReplay"
+      },
+      "type": "object",
+      "title": "By Setup",
+      "default": {}
+     }
+    },
+    "type": "object",
+    "required": [
+     "market",
+     "ran",
+     "stocks",
+     "start",
+     "end",
+     "overall",
+     "by_category",
+     "by_year"
+    ],
+    "title": "ReplayOut"
+   },
+   "ReplaySummary": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "target": {
+      "type": "integer",
+      "title": "Target",
+      "default": 0
+     },
+     "stop": {
+      "type": "integer",
+      "title": "Stop",
+      "default": 0
+     },
+     "avg_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg R"
+     },
+     "avg_r_net": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg R Net"
+     },
+     "control_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Control R"
+     },
+     "edge_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge R"
+     },
+     "edge_low": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge Low"
+     },
+     "edge_high": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge High"
+     },
+     "edge_first_half": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge First Half"
+     },
+     "edge_second_half": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge Second Half"
+     }
+    },
+    "type": "object",
+    "required": [
+     "n"
+    ],
+    "title": "ReplaySummary"
+   },
+   "ScanOut": {
+    "properties": {
+     "started": {
+      "type": "boolean",
+      "title": "Started"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "started",
+     "message"
+    ],
+    "title": "ScanOut"
+   },
+   "SearchItem": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "sector": {
+      "type": "string",
+      "title": "Sector"
+     },
+     "market": {
+      "type": "string",
+      "title": "Market"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "sector",
+     "market"
+    ],
+    "title": "SearchItem"
+   },
+   "Sector": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "change_pct": {
+      "type": "number",
+      "title": "Change Pct"
+     },
+     "advancing": {
+      "type": "integer",
+      "title": "Advancing"
+     },
+     "total": {
+      "type": "integer",
+      "title": "Total"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "change_pct",
+     "advancing",
+     "total"
+    ],
+    "title": "Sector"
+   },
+   "SettingsOut": {
+    "properties": {
+     "owner_required": {
+      "type": "boolean",
+      "title": "Owner Required"
+     },
+     "telegram": {
+      "type": "boolean",
+      "title": "Telegram"
+     },
+     "ai_enabled": {
+      "type": "boolean",
+      "title": "Ai Enabled"
+     },
+     "india_universe": {
+      "type": "integer",
+      "title": "India Universe"
+     },
+     "alert_unproven": {
+      "type": "boolean",
+      "title": "Alert Unproven"
+     }
+    },
+    "type": "object",
+    "required": [
+     "owner_required",
+     "telegram",
+     "ai_enabled",
+     "india_universe",
+     "alert_unproven"
+    ],
+    "title": "SettingsOut"
+   },
+   "SetupInfo": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "blurb": {
+      "type": "string",
+      "title": "Blurb"
+     },
+     "validated": {
+      "type": "boolean",
+      "title": "Validated"
+     },
+     "replay": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReplaySummary"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "key",
+     "label",
+     "blurb",
+     "validated"
+    ],
+    "title": "SetupInfo"
+   },
+   "SetupRecord": {
+    "properties": {
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "active": {
+      "type": "integer",
+      "title": "Active"
+     },
+     "validated": {
+      "type": "boolean",
+      "title": "Validated"
+     },
+     "replay": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReplaySummary"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "live": {
+      "$ref": "#/components/schemas/Bucket"
+     }
+    },
+    "type": "object",
+    "required": [
+     "label",
+     "active",
+     "validated",
+     "live"
+    ],
+    "title": "SetupRecord"
+   },
+   "SetupReplay": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "target": {
+      "type": "integer",
+      "title": "Target",
+      "default": 0
+     },
+     "stop": {
+      "type": "integer",
+      "title": "Stop",
+      "default": 0
+     },
+     "avg_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg R"
+     },
+     "avg_r_net": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg R Net"
+     },
+     "control_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Control R"
+     },
+     "edge_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge R"
+     },
+     "edge_low": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge Low"
+     },
+     "edge_high": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge High"
+     },
+     "edge_first_half": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge First Half"
+     },
+     "edge_second_half": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge Second Half"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "validated": {
+      "type": "boolean",
+      "title": "Validated"
+     },
+     "by_year": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/ReplaySummary"
+      },
+      "type": "object",
+      "title": "By Year",
+      "default": {}
+     }
+    },
+    "type": "object",
+    "required": [
+     "n",
+     "label",
+     "validated"
+    ],
+    "title": "SetupReplay"
+   },
+   "SignalOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "engine": {
+      "type": "string",
+      "title": "Engine"
+     },
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "direction": {
+      "type": "string",
+      "enum": [
+       "BUY",
+       "SELL",
+       "AVOID"
+      ],
+      "title": "Direction"
+     },
+     "category": {
+      "type": "string",
+      "enum": [
+       "intraday",
+       "short_term",
+       "long_term"
+      ],
+      "title": "Category"
+     },
+     "setup": {
+      "type": "string",
+      "title": "Setup",
+      "default": "confluence"
+     },
+     "timeframe": {
+      "type": "string",
+      "title": "Timeframe"
+     },
+     "entry": {
+      "type": "number",
+      "title": "Entry"
+     },
+     "stop": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target"
+     },
+     "evidence_for": {
+      "items": {
+       "$ref": "#/components/schemas/Evidence"
+      },
+      "type": "array",
+      "title": "Evidence For"
+     },
+     "evidence_against": {
+      "items": {
+       "$ref": "#/components/schemas/Evidence"
+      },
+      "type": "array",
+      "title": "Evidence Against"
+     },
+     "pending": {
+      "type": "boolean",
+      "title": "Pending"
+     },
+     "created_at": {
+      "type": "string",
+      "title": "Created At"
+     },
+     "expires_at": {
+      "type": "string",
+      "title": "Expires At"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "fill_price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fill Price"
+     },
+     "exit_price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit Price"
+     },
+     "exit_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit At"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R"
+     },
+     "best_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Best R"
+     },
+     "worst_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Worst R"
+     },
+     "control_r": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Control R"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "engine",
+     "market",
+     "ticker",
+     "name",
+     "direction",
+     "category",
+     "timeframe",
+     "entry",
+     "stop",
+     "target",
+     "evidence_for",
+     "evidence_against",
+     "pending",
+     "created_at",
+     "expires_at",
+     "status",
+     "fill_price",
+     "exit_price",
+     "exit_at",
+     "r",
+     "best_r",
+     "worst_r",
+     "control_r"
+    ],
+    "title": "SignalOut"
+   },
+   "SignalsOut": {
+    "properties": {
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "active": {
+      "items": {
+       "$ref": "#/components/schemas/LiveSignal"
+      },
+      "type": "array",
+      "title": "Active"
+     },
+     "recent": {
+      "items": {
+       "$ref": "#/components/schemas/SignalOut"
+      },
+      "type": "array",
+      "title": "Recent"
+     }
+    },
+    "type": "object",
+    "required": [
+     "market",
+     "active",
+     "recent"
+    ],
+    "title": "SignalsOut"
+   },
+   "Status": {
+    "properties": {
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "open": {
+      "type": "boolean",
+      "title": "Open"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason"
+     },
+     "session_date": {
+      "type": "string",
+      "title": "Session Date"
+     },
+     "opens_at": {
+      "type": "string",
+      "title": "Opens At"
+     },
+     "closes_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Closes At"
+     },
+     "calendar_ok": {
+      "type": "boolean",
+      "title": "Calendar Ok"
+     },
+     "last_scan": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Scan"
+     },
+     "scanning": {
+      "type": "boolean",
+      "title": "Scanning"
+     },
+     "ai_enabled": {
+      "type": "boolean",
+      "title": "Ai Enabled"
+     },
+     "owner_required": {
+      "type": "boolean",
+      "title": "Owner Required",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "market",
+     "open",
+     "reason",
+     "session_date",
+     "opens_at",
+     "closes_at",
+     "calendar_ok",
+     "last_scan",
+     "scanning",
+     "ai_enabled"
+    ],
+    "title": "Status"
+   },
+   "StockOut": {
+    "properties": {
+     "ticker": {
+      "type": "string",
+      "title": "Ticker"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "market": {
+      "type": "string",
+      "title": "Market"
+     },
+     "sector": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sector"
+     },
+     "quote": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Quote"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "technicals": {
+      "$ref": "#/components/schemas/Technicals"
+     },
+     "bullish": {
+      "items": {
+       "$ref": "#/components/schemas/Evidence"
+      },
+      "type": "array",
+      "title": "Bullish"
+     },
+     "bearish": {
+      "items": {
+       "$ref": "#/components/schemas/Evidence"
+      },
+      "type": "array",
+      "title": "Bearish"
+     },
+     "suggested_stop": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suggested Stop"
+     },
+     "suggested_target": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suggested Target"
+     },
+     "signal": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SignalOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "history": {
+      "items": {
+       "$ref": "#/components/schemas/SignalOut"
+      },
+      "type": "array",
+      "title": "History"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ticker",
+     "name",
+     "market",
+     "sector",
+     "quote",
+     "technicals",
+     "bullish",
+     "bearish",
+     "suggested_stop",
+     "suggested_target",
+     "signal",
+     "history"
+    ],
+    "title": "StockOut"
+   },
+   "Technicals": {
+    "properties": {
+     "price": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price"
+     },
+     "ema_9": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ema 9"
+     },
+     "ema_21": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ema 21"
+     },
+     "ema_50": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ema 50"
+     },
+     "ema_200": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ema 200"
+     },
+     "rsi": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rsi"
+     },
+     "macd_hist": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Macd Hist"
+     },
+     "bb_upper": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bb Upper"
+     },
+     "bb_lower": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bb Lower"
+     },
+     "atr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Atr"
+     },
+     "vwma": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Vwma"
+     },
+     "volume_ratio": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Volume Ratio"
+     },
+     "support": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Support"
+     },
+     "resistance": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Resistance"
+     },
+     "return_20d": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Return 20D"
+     }
+    },
+    "type": "object",
+    "title": "Technicals"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}

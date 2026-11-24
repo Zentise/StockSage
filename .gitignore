@@ -210,3 +210,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+skills/
+
+# Local database
+stocksage.db*
+api.log
+replay.log

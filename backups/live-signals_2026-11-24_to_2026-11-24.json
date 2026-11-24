@@ -1,0 +1,72 @@
+{
+ "source": "https://thestocksage.vercel.app/api",
+ "days": [
+  {
+   "market": "us",
+   "date": "2026-11-24",
+   "signals": [
+    {
+     "ticker": "AMZN",
+     "name": "Amazon",
+     "signal": "SELL",
+     "entry": 251.93,
+     "target": 250.87,
+     "sl": 252.46,
+     "category": "intraday",
+     "confidence": 92,
+     "recommended_at": "2026-11-24 09:30:24",
+     "current_price": 251.66,
+     "change_from_entry": -0.11,
+     "status": "on_track"
+    },
+    {
+     "ticker": "AVGO",
+     "name": "Broadcom",
+     "signal": "SELL",
+     "entry": 301.5,
+     "target": 299.32,
+     "sl": 302.59,
+     "category": "intraday",
+     "confidence": 92,
+     "recommended_at": "2026-11-24 09:30:24",
+     "current_price": 298.74,
+     "change_from_entry": -0.92,
+     "status": "target_hit"
+    },
+    {
+     "ticker": "UNH",
+     "name": "UnitedHealth Group",
+     "signal": "SELL",
+     "entry": 333.01,
+     "target": 331.68,
+     "sl": 333.68,
+     "category": "intraday",
+     "confidence": 80,
+     "recommended_at": "2026-11-24 09:30:24",
+     "current_price": 332.3,
+     "change_from_entry": -0.21,
+     "status": "on_track"
+    },
+    {
+     "ticker": "V",
+     "name": "Visa",
+     "signal": "AVOID",
+     "entry": 408.4,
+     "target": 391.4,
+     "sl": 416.9,
+     "category": "short_term",
+     "confidence": 92,
+     "recommended_at": "2026-11-24 09:30:24",
+     "current_price": 410.81,
+     "change_from_entry": 0.59,
+     "status": "neutral"
+    }
+   ],
+   "summary": {
+    "total": 4,
+    "accurate": 3,
+    "accuracy_pct": 75.0
+   }
+  }
+ ]
+}

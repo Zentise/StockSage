@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '../components/TopBar';
 import TickerStrip from '../components/TickerStrip';
 import CategoryTabs from '../components/CategoryTabs';
 import SuggestionCard from '../components/SuggestionCard';
-import { getSuggestions, triggerScan, getNews, getIndices, connectWebSocket } from '../api';
+import { getSuggestions, triggerScan, getNews, getIndices } from '../api';
 
 export default function Home({ market, setMarket }) {
   const navigate = useNavigate();
@@ -18,6 +17,10 @@ export default function Home({ market, setMarket }) {
   const [lastScan, setLastScan] = useState(null);
   const [closedReason, setClosedReason] = useState(null);
   const refreshTimer = useRef(null);
+
+  // The cascade is a first-impression, not a recurring event. After the first
+  // grid lands, later cards fade in on their own with no delay.
+  const staggerEntrance = useRef(true);
 
   // Derived: filter cards client-side based on active category tab
   const cards = category === 'all'
@@ -111,6 +114,13 @@ export default function Home({ market, setMarket }) {
     fetchIndicesData();
   }, [fetchIndicesData]);
 
+  // Retire the cascade once the first grid has played.
+  useEffect(() => {
+    if (!staggerEntrance.current || allCards.length === 0) return;
+    const t = setTimeout(() => { staggerEntrance.current = false; }, 700);
+    return () => clearTimeout(t);
+  }, [allCards.length]);
+
   // Count signals
   const buyCount = cards.filter(c => (c.signal || c.action || '').toUpperCase() === 'BUY').length;
   const sellCount = cards.filter(c => (c.signal || c.action || '').toUpperCase() === 'SELL').length;
@@ -136,26 +146,18 @@ export default function Home({ market, setMarket }) {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <TopBar market={market} setMarket={setMarket} />
-      <TickerStrip market={market} />
+      <TickerStrip />
 
-      <div
-        className="mx-auto px-6 py-6"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 320px',
-          gap: '0',
-          maxWidth: '1440px',
-        }}
-      >
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 py-6 grid grid-cols-1 xl:grid-cols-[1fr_320px]">
         {/* Left panel - Main content */}
-        <div className="pr-6">
+        <div className="xl:pr-6 min-w-0">
           {/* Section header */}
           <div className="mb-6">
             <div className="gold-divider" />
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex flex-wrap items-center gap-3 mb-1">
               <h1
-                className="text-[32px] leading-none"
-                style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+                className="type-display-lg text-[32px]"
+                style={{ color: 'var(--white)' }}
               >
                 TODAY'S SIGNALS
               </h1>
@@ -174,8 +176,9 @@ export default function Home({ market, setMarket }) {
                 {isMarketOpen ? 'Market Open' : 'Market Closed'}
               </span>
               <button
+                type="button"
                 onClick={() => { handleRefresh(); fetchNewsData(); fetchIndicesData(); }}
-                className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] uppercase tracking-wider transition-colors"
+                className="press ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] uppercase tracking-wider"
                 style={{
                   background: 'rgba(201,168,76,0.08)',
                   color: 'var(--gold)',
@@ -193,73 +196,65 @@ export default function Home({ market, setMarket }) {
           </div>
 
           {/* Category tabs */}
-          <div className="mb-5">
+          <div className="mb-5 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
             <CategoryTabs active={category} onChange={setCategory} counts={categoryCounts} />
           </div>
 
-          {/* Cards grid */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${market}-${category}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="grid gap-4"
-              style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}
-            >
-              {loading && allCards.length === 0 ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="rounded-md h-64 animate-pulse"
-                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-                  />
-                ))
-              ) : cards.length === 0 ? (
+          {/* Cards grid.
+              No wrapper crossfade on category change: the cards that survive
+              the filter should stay exactly where they are, and only the ones
+              that genuinely arrive should animate. */}
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+            {loading && allCards.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
                 <div
-                  className="col-span-2 text-center py-16"
-                  style={{ color: 'var(--muted)' }}
-                >
-                  {closedReason ? (
-                    <>
-                      <p className="text-sm" style={{ color: 'var(--gold)' }}>
-                        {market === 'india' ? '🇮🇳' : '🇺🇸'} Market is closed — {closedReason}
-                      </p>
-                      <p className="text-xs mt-2" style={{ color: 'var(--muted2)' }}>
-                        Stock recommendations are not available during holidays and weekends.
-                        <br />Check back when the market reopens.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm">No signals available for this category.</p>
-                      <p className="text-xs mt-1" style={{ color: 'var(--muted2)' }}>
-                        Signals are generated during market hours.
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                cards.map((card, i) => (
-                  <SuggestionCard key={card.ticker || card.symbol || i} card={card} index={i} />
-                ))
-              )}
-            </motion.div>
-          </AnimatePresence>
+                  key={i}
+                  className="rounded-md h-64 animate-pulse"
+                  style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+                />
+              ))
+            ) : cards.length === 0 ? (
+              <div
+                className="md:col-span-2 text-center py-16"
+                style={{ color: 'var(--muted)' }}
+              >
+                {closedReason ? (
+                  <>
+                    <p className="text-sm" style={{ color: 'var(--gold)' }}>
+                      {market === 'india' ? '🇮🇳' : '🇺🇸'} Market is closed — {closedReason}
+                    </p>
+                    <p className="text-xs mt-2" style={{ color: 'var(--muted2)' }}>
+                      Stock recommendations are not available during holidays and weekends.
+                      <br />Check back when the market reopens.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm">No signals available for this category.</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--muted2)' }}>
+                      Signals are generated during market hours.
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : (
+              cards.map((card, i) => (
+                <SuggestionCard
+                  key={card.ticker || card.symbol || i}
+                  card={card}
+                  index={i}
+                  stagger={staggerEntrance.current}
+                />
+              ))
+            )}
+          </div>
         </div>
 
         {/* Right panel - Sidebar */}
-        <div
-          className="pl-6"
-          style={{ borderLeft: '1px solid var(--border)' }}
-        >
+        <div className="mt-10 pt-6 xl:mt-0 xl:pt-0 xl:pl-6 border-t xl:border-t-0 xl:border-l min-w-0" style={{ borderColor: 'var(--border)' }}>
           {/* Markets section */}
           <div className="mb-6">
-            <h2
-              className="text-[18px] mb-1"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-            >
+            <h2 className="type-display-sm text-[18px] mb-1" style={{ color: 'var(--white)' }}>
               MARKETS
             </h2>
             <div className="h-[1px] mb-3" style={{ background: 'var(--gold)', width: '100%' }} />
@@ -272,14 +267,11 @@ export default function Home({ market, setMarket }) {
                     className="p-2.5 rounded"
                     style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
                   >
-                    <div
-                      className="text-[10px] uppercase mb-1"
-                      style={{ color: 'var(--muted)', letterSpacing: '0.5px' }}
-                    >
+                    <div className="type-label mb-1" style={{ color: 'var(--muted)' }}>
                       {idx.name || idx.ticker}
                     </div>
                     <div
-                      className="text-[15px]"
+                      className="tnum text-[15px]"
                       style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
                     >
                       {typeof idx.value === 'number'
@@ -287,7 +279,7 @@ export default function Home({ market, setMarket }) {
                         : idx.price?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || '--'}
                     </div>
                     <div
-                      className="text-[11px]"
+                      className="tnum text-[11px]"
                       style={{
                         fontFamily: 'var(--font-mono)',
                         color: (idx.change_pct || idx.pct_change || 0) >= 0 ? 'var(--green)' : 'var(--red)',
@@ -312,10 +304,7 @@ export default function Home({ market, setMarket }) {
 
           {/* Live News section */}
           <div className="mb-6">
-            <h2
-              className="text-[18px] mb-1"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-            >
+            <h2 className="type-display-sm text-[18px] mb-1" style={{ color: 'var(--white)' }}>
               LIVE NEWS
             </h2>
             <div className="h-[1px] mb-3" style={{ background: 'var(--gold)', width: '100%' }} />
@@ -334,15 +323,12 @@ export default function Home({ market, setMarket }) {
                       href={newsUrl || undefined}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block py-3 cursor-pointer group"
+                      className="block py-3 cursor-pointer"
                       style={{ borderBottom: '1px solid var(--border)', textDecoration: 'none' }}
                     >
-                      <p
-                        className="text-xs leading-relaxed transition-colors"
-                        style={{ color: 'var(--white)' }}
-                        onMouseEnter={(e) => e.target.style.color = 'var(--gold)'}
-                        onMouseLeave={(e) => e.target.style.color = 'var(--white)'}
-                      >
+                      {/* hover-gold is gated behind a fine pointer — on touch,
+                          :hover sticks after a tap and reads as a stuck state. */}
+                      <p className="hover-gold text-white text-xs leading-relaxed">
                         {headline}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
@@ -379,10 +365,7 @@ export default function Home({ market, setMarket }) {
 
           {/* Session Summary */}
           <div>
-            <h2
-              className="text-[18px] mb-1"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-            >
+            <h2 className="type-display-sm text-[18px] mb-1" style={{ color: 'var(--white)' }}>
               SESSION SUMMARY
             </h2>
             <div className="h-[1px] mb-3" style={{ background: 'var(--gold)', width: '100%' }} />
@@ -391,46 +374,35 @@ export default function Home({ market, setMarket }) {
               className="p-4 rounded-md space-y-2.5"
               style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
             >
-              <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Total Signals</span>
-                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}>
-                  {cards.length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>BUY</span>
-                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--green)' }}>
-                  {buyCount}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>SELL</span>
-                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--red)' }}>
-                  {sellCount}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>AVOID</span>
-                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--orange)' }}>
-                  {avoidCount}
-                </span>
-              </div>
+              {[
+                { label: 'Total Signals', value: cards.length, color: 'var(--white)' },
+                { label: 'BUY', value: buyCount, color: 'var(--green)' },
+                { label: 'SELL', value: sellCount, color: 'var(--red)' },
+                { label: 'AVOID', value: avoidCount, color: 'var(--orange)' },
+              ].map((row) => (
+                <div key={row.label} className="flex justify-between">
+                  <span className="type-label text-[11px]" style={{ color: 'var(--muted)' }}>{row.label}</span>
+                  <span className="tnum text-xs" style={{ fontFamily: 'var(--font-mono)', color: row.color }}>
+                    {row.value}
+                  </span>
+                </div>
+              ))}
               <div className="h-[1px]" style={{ background: 'var(--border)' }} />
               <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Avg Confidence</span>
-                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
+                <span className="type-label text-[11px]" style={{ color: 'var(--muted)' }}>Avg Confidence</span>
+                <span className="tnum text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
                   {avgConfidence}%
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Last Scan</span>
-                <span className="text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
+                <span className="type-label text-[11px]" style={{ color: 'var(--muted)' }}>Last Scan</span>
+                <span className="tnum text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
                   {lastScan ? lastScan.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[11px] uppercase" style={{ color: 'var(--muted)' }}>Next Scan</span>
-                <span className="text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
+                <span className="type-label text-[11px]" style={{ color: 'var(--muted)' }}>Next Scan</span>
+                <span className="tnum text-[10px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
                   {lastScan
                     ? new Date(lastScan.getTime() + 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : '--:--'}
@@ -438,8 +410,9 @@ export default function Home({ market, setMarket }) {
               </div>
               <div className="h-[1px] mt-1" style={{ background: 'var(--border)' }} />
               <button
+                type="button"
                 onClick={() => navigate('/accuracy')}
-                className="w-full mt-1 py-2 rounded text-[11px] uppercase tracking-wider transition-colors text-center"
+                className="press w-full mt-1 py-2 rounded text-[11px] uppercase tracking-wider text-center"
                 style={{
                   background: 'rgba(201,168,76,0.08)',
                   color: 'var(--gold)',

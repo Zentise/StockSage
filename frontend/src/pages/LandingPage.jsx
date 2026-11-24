@@ -1,20 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, TrendingUp, Shield, Zap, Globe,
   ArrowRight, ChevronDown, BarChart3, Cpu,
 } from 'lucide-react';
+import Reveal from '../components/Reveal';
+import useReducedMotion from '../hooks/useReducedMotion';
 
-/* --- Subtle Particle Field --- */
+/* --- Subtle Particle Field ---
+   A full-viewport moving background is the one ambient effect that has to
+   earn its keep: it's off under reduced motion, off on small screens where
+   it's mostly cost, and paused whenever the tab isn't being looked at. */
 function ParticleField() {
   const canvasRef = useRef(null);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
+    if (reduced) return;
+    if (!window.matchMedia('(min-width: 768px)').matches) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let animId;
+    let animId = null;
 
     const resize = () => {
       canvas.width = window.innerWidth;
@@ -47,7 +55,7 @@ function ParticleField() {
       }
     }
 
-    const particles = Array.from({ length: 60 }, () => new Particle());
+    const particles = Array.from({ length: 48 }, () => new Particle());
 
     function drawConnections() {
       for (let i = 0; i < particles.length; i++) {
@@ -75,24 +83,37 @@ function ParticleField() {
       drawConnections();
       animId = requestAnimationFrame(loop);
     }
-    loop();
+
+    const start = () => { if (animId === null) loop(); };
+    const stop = () => {
+      if (animId !== null) { cancelAnimationFrame(animId); animId = null; }
+    };
+    const onVisibility = () => (document.hidden ? stop() : start());
+
+    start();
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      cancelAnimationFrame(animId);
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [reduced]);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
+  if (reduced) return null;
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" aria-hidden="true" />;
 }
 
 /* --- Animated Counter --- */
 function AnimCounter({ target, suffix = '', prefix = '' }) {
-  const [val, setVal] = useState(0);
+  const reduced = useReducedMotion();
+  const [val, setVal] = useState(reduced ? target : 0);
   const ref = useRef(null);
   const started = useRef(false);
 
   useEffect(() => {
+    if (reduced) { setVal(target); return; }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !started.current) {
@@ -112,9 +133,9 @@ function AnimCounter({ target, suffix = '', prefix = '' }) {
     );
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [target]);
+  }, [target, reduced]);
 
-  return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
+  return <span ref={ref} className="tnum">{prefix}{val.toLocaleString()}{suffix}</span>;
 }
 
 /* --- Mock Signal Card --- */
@@ -130,10 +151,7 @@ function MockCard({ ticker, name, signal, price, change, confidence, color }) {
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div
-            className="text-lg"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-          >
+          <div className="type-display-sm text-lg" style={{ color: 'var(--white)' }}>
             {name}
           </div>
           <div className="text-xs mt-0.5" style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>
@@ -147,14 +165,11 @@ function MockCard({ ticker, name, signal, price, change, confidence, color }) {
           {signal}
         </span>
       </div>
-      <div
-        className="text-2xl mb-0.5"
-        style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
-      >
+      <div className="tnum text-2xl mb-0.5" style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}>
         {price}
       </div>
-      <div className="text-xs mb-4" style={{ fontFamily: 'var(--font-mono)', color }}>{change}</div>
-      <svg viewBox="0 0 200 40" className="w-full mb-4">
+      <div className="tnum text-xs mb-4" style={{ fontFamily: 'var(--font-mono)', color }}>{change}</div>
+      <svg viewBox="0 0 200 40" className="w-full mb-4" aria-hidden="true">
         <defs>
           <linearGradient id={`g-${ticker}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.2" />
@@ -176,14 +191,14 @@ function MockCard({ ticker, name, signal, price, change, confidence, color }) {
       </svg>
       <div className="flex items-center justify-between text-[10px] mb-1">
         <span style={{ color: 'var(--muted)' }}>AI Confidence</span>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{confidence}%</span>
+        <span className="tnum" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{confidence}%</span>
       </div>
-      <div className="w-full rounded-full h-[3px]" style={{ background: 'var(--border)' }}>
+      <div className="w-full rounded-full h-[3px] overflow-hidden" style={{ background: 'var(--border)' }}>
         <div
-          className="h-[3px] rounded-full"
+          className="h-[3px] w-full rounded-full origin-left"
           style={{
-            width: `${confidence}%`,
-            background: `linear-gradient(90deg, var(--gold-dim), var(--gold))`,
+            transform: `scaleX(${confidence / 100})`,
+            background: 'linear-gradient(90deg, var(--gold-dim), var(--gold))',
           }}
         />
       </div>
@@ -194,9 +209,36 @@ function MockCard({ ticker, name, signal, price, change, confidence, color }) {
 /* --- Main Landing Page --- */
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { scrollY } = useScroll();
-  const heroY = useTransform(scrollY, [0, 600], [0, -120]);
-  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
+  const reduced = useReducedMotion();
+  const heroRef = useRef(null);
+
+  /* Hero parallax. Written straight to the node inside a rAF — no React
+     render per scroll frame, and only transform/opacity are touched. */
+  useEffect(() => {
+    if (reduced) return;
+    const el = heroRef.current;
+    if (!el) return;
+
+    let frame = null;
+    const apply = () => {
+      frame = null;
+      const y = window.scrollY;
+      el.style.transform = `translateY(${-Math.min(y, 600) * 0.2}px)`;
+      el.style.opacity = String(Math.max(0, 1 - y / 400));
+    };
+    const onScroll = () => {
+      if (frame === null) frame = requestAnimationFrame(apply);
+    };
+
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (frame !== null) cancelAnimationFrame(frame);
+      el.style.transform = '';
+      el.style.opacity = '';
+    };
+  }, [reduced]);
 
   const features = [
     {
@@ -256,20 +298,18 @@ export default function LandingPage() {
     <div className="min-h-screen overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <ParticleField />
 
-      {/* Navbar */}
+      {/* Navbar — translucent chrome, page scrolls under it */}
       <nav
         className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4"
         style={{
-          background: 'rgba(8,8,8,0.85)',
-          backdropFilter: 'blur(12px)',
+          background: 'var(--chrome)',
+          backdropFilter: 'var(--chrome-blur)',
+          WebkitBackdropFilter: 'var(--chrome-blur)',
           borderBottom: '1px solid var(--border)',
         }}
       >
         <div className="flex items-center gap-2">
-          <span
-            className="text-[24px] tracking-wide"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)' }}
-          >
+          <span className="type-display-sm text-[24px]" style={{ color: 'var(--gold)' }}>
             STOCKSAGE
           </span>
           <span
@@ -277,11 +317,10 @@ export default function LandingPage() {
             style={{ background: 'var(--gold)' }}
           />
         </div>
-        <motion.button
+        <button
+          type="button"
           onClick={() => navigate('/dashboard')}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-5 py-2 rounded-md text-sm font-medium transition-colors"
+          className="press flex items-center gap-2 px-5 py-2 rounded-md text-sm font-medium"
           style={{
             background: 'rgba(201,168,76,0.12)',
             color: 'var(--gold)',
@@ -289,7 +328,7 @@ export default function LandingPage() {
           }}
         >
           Dashboard <ArrowRight className="w-4 h-4" />
-        </motion.button>
+        </button>
       </nav>
 
       {/* Hero */}
@@ -298,17 +337,14 @@ export default function LandingPage() {
         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[130px] pointer-events-none" style={{ background: 'rgba(201,168,76,0.04)' }} />
         <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full blur-[130px] pointer-events-none" style={{ background: 'rgba(0,200,150,0.03)' }} />
 
-        <motion.div
-          style={{ y: heroY, opacity: heroOpacity }}
+        <div
+          ref={heroRef}
           className="relative z-10 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center"
         >
-          {/* Left: Text */}
+          {/* Left: Text — one cascade, 100ms apart, on the page's first paint */}
           <div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium mb-6"
+            <div
+              className="rise-in inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium mb-6"
               style={{
                 background: 'rgba(201,168,76,0.1)',
                 border: '1px solid rgba(201,168,76,0.25)',
@@ -317,41 +353,29 @@ export default function LandingPage() {
             >
               <div className="w-1.5 h-1.5 rounded-full gold-pulse" style={{ background: 'var(--gold)' }} />
               AI-Powered Trading Intelligence
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 25 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.7 }}
-              className="text-5xl md:text-6xl xl:text-7xl leading-[1.05] mb-6"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+            <h1
+              className="rise-in type-display-xl text-5xl md:text-6xl xl:text-7xl mb-6"
+              style={{ color: 'var(--white)', animationDelay: '100ms' }}
             >
               TRADE SMARTER<br />
               <span style={{ color: 'var(--gold)' }}>WITH AI AGENTS</span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.7 }}
-              className="text-base leading-relaxed mb-8 max-w-lg"
-              style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}
+            <p
+              className="rise-in text-base leading-relaxed mb-8 max-w-lg"
+              style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)', animationDelay: '200ms' }}
             >
               A crew of specialized AI agents works around the clock — scanning markets,
               analyzing patterns, and generating precise trading signals for Indian & US stocks.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.7 }}
-              className="flex flex-wrap gap-4 mb-8"
-            >
-              <motion.button
+            <div className="rise-in flex flex-wrap gap-4 mb-8" style={{ animationDelay: '300ms' }}>
+              <button
+                type="button"
                 onClick={() => navigate('/dashboard')}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-8 py-4 rounded-md text-base font-medium transition-all"
+                className="press flex items-center gap-2 px-8 py-4 rounded-md text-base font-medium"
                 style={{
                   background: 'var(--gold)',
                   color: '#000',
@@ -360,12 +384,11 @@ export default function LandingPage() {
               >
                 Launch Terminal
                 <ArrowRight className="w-5 h-5" />
-              </motion.button>
-              <motion.button
+              </button>
+              <button
+                type="button"
                 onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-8 py-4 rounded-md text-base font-medium transition-all"
+                className="press flex items-center gap-2 px-8 py-4 rounded-md text-base font-medium"
                 style={{
                   background: 'transparent',
                   color: 'var(--white)',
@@ -373,16 +396,11 @@ export default function LandingPage() {
                 }}
               >
                 Explore Features
-              </motion.button>
-            </motion.div>
+              </button>
+            </div>
 
             {/* Tech badges */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.55 }}
-              className="flex flex-wrap gap-2"
-            >
+            <div className="rise-in flex flex-wrap gap-2" style={{ animationDelay: '400ms' }}>
               {techs.map((t) => (
                 <span
                   key={t}
@@ -396,20 +414,18 @@ export default function LandingPage() {
                   {t}
                 </span>
               ))}
-            </motion.div>
+            </div>
           </div>
 
-          {/* Right: Card Stack */}
-          <div className="relative h-[520px] hidden lg:block">
-            <div style={{ perspective: '1400px' }} className="relative w-full h-full">
-              {/* Back card */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.45, rotateY: -18, rotateX: 6 }}
-                transition={{ duration: 1, delay: 0.6 }}
-                style={{ position: 'absolute', top: '5%', right: '-2%', zIndex: 1, transformStyle: 'preserve-3d' }}
-                className="w-52"
-              >
+          {/* Right: Card Stack. The depth is static CSS; only the entrance
+              and the hover tilt move, and the tilt is pointer-gated. */}
+          <div className="relative h-[520px] hidden lg:block" style={{ perspective: '1400px' }}>
+            {/* Back card */}
+            <div
+              className="fade-in w-52"
+              style={{ position: 'absolute', top: '5%', right: '-2%', zIndex: 1, animationDelay: '600ms' }}
+            >
+              <div style={{ transformStyle: 'preserve-3d', transform: 'rotateY(-18deg) rotateX(6deg)', opacity: 0.45 }}>
                 <MockCard
                   ticker="AAPL"
                   name="Apple Inc."
@@ -419,16 +435,15 @@ export default function LandingPage() {
                   confidence={72}
                   color="#00c896"
                 />
-              </motion.div>
+              </div>
+            </div>
 
-              {/* Mid card */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.7, rotateY: -8, rotateX: 3 }}
-                transition={{ duration: 1, delay: 0.4 }}
-                style={{ position: 'absolute', top: '25%', right: '5%', zIndex: 2, transformStyle: 'preserve-3d' }}
-                className="w-56"
-              >
+            {/* Mid card */}
+            <div
+              className="fade-in w-56"
+              style={{ position: 'absolute', top: '25%', right: '5%', zIndex: 2, animationDelay: '400ms' }}
+            >
+              <div style={{ transformStyle: 'preserve-3d', transform: 'rotateY(-8deg) rotateX(3deg)', opacity: 0.7 }}>
                 <MockCard
                   ticker="RELIANCE.NS"
                   name="Reliance Industries"
@@ -438,20 +453,15 @@ export default function LandingPage() {
                   confidence={81}
                   color="#c9a84c"
                 />
-              </motion.div>
+              </div>
+            </div>
 
-              {/* Front hero card */}
-              <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-                whileHover={{ rotateY: 4, rotateX: -4, scale: 1.02 }}
-                style={{
-                  position: 'absolute', top: '12%', left: '0%', zIndex: 3,
-                  transformStyle: 'preserve-3d',
-                }}
-                className="w-72"
-              >
+            {/* Front hero card */}
+            <div
+              className="rise-in w-72"
+              style={{ position: 'absolute', top: '12%', left: '0%', zIndex: 3, animationDelay: '150ms' }}
+            >
+              <div className="tilt-card" style={{ transformStyle: 'preserve-3d' }}>
                 <MockCard
                   ticker="TATAMOTORS.NS"
                   name="Tata Motors Ltd"
@@ -461,96 +471,81 @@ export default function LandingPage() {
                   confidence={87}
                   color="#00c896"
                 />
-              </motion.div>
+               </div>
+            </div>
 
-              {/* Floating badge: AI scanning */}
-              <motion.div
-                animate={{ y: [-6, 6, -6] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ position: 'absolute', bottom: '12%', left: '2%', zIndex: 4 }}
+            {/* Floating badge: AI scanning */}
+            <div className="float" style={{ position: 'absolute', bottom: '12%', left: '2%', zIndex: 4 }}>
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-md"
+                style={{
+                  background: 'rgba(19,19,19,0.95)',
+                  border: '1px solid rgba(201,168,76,0.3)',
+                  boxShadow: '0 0 20px rgba(201,168,76,0.1)',
+                }}
               >
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
-                  style={{
-                    background: 'rgba(19,19,19,0.95)',
-                    border: '1px solid rgba(201,168,76,0.3)',
-                    boxShadow: '0 0 20px rgba(201,168,76,0.1)',
-                  }}
-                >
-                  <Brain className="w-4 h-4" style={{ color: 'var(--gold)' }} />
-                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-                    AI analyzing sentiment...
-                  </span>
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2].map(i => (
-                      <motion.div
-                        key={i}
-                        className="w-1 h-3 rounded-full"
-                        style={{ background: 'var(--gold)' }}
-                        animate={{ scaleY: [0.4, 1, 0.4] }}
-                        transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
-                      />
-                    ))}
-                  </div>
+                <Brain className="w-4 h-4" style={{ color: 'var(--gold)' }} />
+                <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  AI analyzing sentiment...
+                </span>
+                <div className="flex gap-0.5">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className="equalizer w-1 h-3 rounded-full"
+                      style={{ background: 'var(--gold)', animationDelay: `${i * 150}ms` }}
+                    />
+                  ))}
                 </div>
-              </motion.div>
+               </div>
+            </div>
 
-              {/* Floating badge: Signal detected */}
-              <motion.div
-                animate={{ y: [6, -6, 6] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ position: 'absolute', top: '2%', left: '35%', zIndex: 4 }}
+            {/* Floating badge: Signal detected */}
+            <div className="float-alt" style={{ position: 'absolute', top: '2%', left: '35%', zIndex: 4 }}>
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-md"
+                style={{
+                  background: 'rgba(19,19,19,0.95)',
+                  border: '1px solid rgba(0,200,150,0.3)',
+                  boxShadow: '0 0 20px rgba(0,200,150,0.1)',
+                }}
               >
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-md"
-                  style={{
-                    background: 'rgba(19,19,19,0.95)',
-                    border: '1px solid rgba(0,200,150,0.3)',
-                    boxShadow: '0 0 20px rgba(0,200,150,0.1)',
-                  }}
-                >
-                  <Zap className="w-4 h-4" style={{ color: 'var(--green)' }} />
-                  <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-                    Signal detected
-                  </span>
-                  <span className="w-2 h-2 rounded-full blink" style={{ background: 'var(--green)' }} />
-                </div>
-              </motion.div>
+                <Zap className="w-4 h-4" style={{ color: 'var(--green)' }} />
+                <span className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Signal detected
+                </span>
+                <span className="w-2 h-2 rounded-full blink" style={{ background: 'var(--green)' }} />
+               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Scroll cue */}
-        <motion.button
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          onClick={() => document.getElementById('stats')?.scrollIntoView({ behavior: 'smooth' })}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-colors z-10"
-          style={{ color: 'var(--muted2)' }}
-        >
-          <span className="text-xs">scroll to explore</span>
-          <ChevronDown className="w-4 h-4" />
-        </motion.button>
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
+          <div className="float">
+            <button
+              type="button"
+              onClick={() => document.getElementById('stats')?.scrollIntoView({ behavior: 'smooth' })}
+              className="press flex flex-col items-center gap-2"
+              style={{ color: 'var(--muted2)' }}
+            >
+              <span className="text-xs">scroll to explore</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Stats */}
       <section id="stats" className="relative py-16 z-10" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {stats.map(({ label, value, suffix }) => (
-            <motion.div
-              key={label}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <div
-                className="text-4xl md:text-5xl mb-2"
-                style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)' }}
-              >
+          {stats.map(({ label, value, suffix }, i) => (
+            <Reveal key={label} delay={i * 60}>
+              <div className="type-display-lg text-4xl md:text-5xl mb-2" style={{ color: 'var(--gold)' }}>
                 <AnimCounter target={value} suffix={suffix} />
               </div>
               <div className="text-sm" style={{ color: 'var(--muted)' }}>{label}</div>
-            </motion.div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -558,12 +553,7 @@ export default function LandingPage() {
       {/* Features */}
       <section id="features" className="relative py-24 px-6 z-10">
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <Reveal className="text-center mb-16">
             <div
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium mb-5"
               style={{
@@ -574,34 +564,19 @@ export default function LandingPage() {
             >
               <Zap className="w-3 h-3" /> Powered by AI
             </div>
-            <h2
-              className="text-3xl md:text-4xl lg:text-5xl mb-4"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-            >
+            <h2 className="type-display-lg text-3xl md:text-4xl lg:text-5xl mb-4" style={{ color: 'var(--white)' }}>
               EVERYTHING YOU NEED TO TRADE<br />
               <span style={{ color: 'var(--gold)' }}>WITH CONFIDENCE</span>
             </h2>
             <p className="max-w-xl mx-auto text-base" style={{ color: 'var(--muted)' }}>
               From raw market data to actionable signals — StockSage handles all the heavy lifting.
             </p>
-          </motion.div>
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map(({ icon: Icon, title, desc, color }, i) => (
-              <motion.div
-                key={title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                whileHover={{ y: -4 }}
-                className="relative rounded-md p-6 overflow-hidden group cursor-default transition-all duration-200"
-                style={{
-                  background: 'var(--card)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                <div className="relative z-10">
+              <Reveal key={title} delay={i * 80}>
+                <div className="lift-card surface-card h-full relative rounded-md p-6 overflow-hidden cursor-default">
                   <div
                     className="w-12 h-12 rounded-md flex items-center justify-center mb-4"
                     style={{
@@ -611,15 +586,12 @@ export default function LandingPage() {
                   >
                     <Icon className="w-6 h-6" style={{ color }} />
                   </div>
-                  <h3
-                    className="text-lg mb-2"
-                    style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-                  >
+                  <h3 className="type-display-sm text-lg mb-2" style={{ color: 'var(--white)' }}>
                     {title.toUpperCase()}
                   </h3>
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{desc}</p>
                 </div>
-              </motion.div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -628,20 +600,12 @@ export default function LandingPage() {
       {/* How it works */}
       <section className="relative py-24 px-6 z-10" style={{ borderTop: '1px solid var(--border)' }}>
         <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2
-              className="text-3xl md:text-4xl mb-3"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-            >
+          <Reveal className="text-center mb-16">
+            <h2 className="type-display-lg text-3xl md:text-4xl mb-3" style={{ color: 'var(--white)' }}>
               HOW IT <span style={{ color: 'var(--gold)' }}>WORKS</span>
             </h2>
             <p style={{ color: 'var(--muted)' }}>Three simple steps from market open to signal</p>
-          </motion.div>
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 relative">
             {/* Connecting line */}
@@ -650,18 +614,10 @@ export default function LandingPage() {
               style={{ background: 'linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-dim))' }}
             />
             {steps.map(({ num, title, desc }, i) => (
-              <motion.div
-                key={num}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                className="text-center relative"
-              >
+              <Reveal key={num} delay={i * 80} className="text-center relative">
                 <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-xl mx-auto mb-6 relative z-10"
+                  className="type-display-sm w-16 h-16 rounded-full flex items-center justify-center text-xl mx-auto mb-6 relative z-10"
                   style={{
-                    fontFamily: 'var(--font-display)',
                     background: 'rgba(201,168,76,0.1)',
                     border: '2px solid rgba(201,168,76,0.4)',
                     color: 'var(--gold)',
@@ -669,14 +625,11 @@ export default function LandingPage() {
                 >
                   {num}
                 </div>
-                <h3
-                  className="text-lg mb-2"
-                  style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-                >
+                <h3 className="type-display-sm text-lg mb-2" style={{ color: 'var(--white)' }}>
                   {title.toUpperCase()}
                 </h3>
                 <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{desc}</p>
-              </motion.div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -688,27 +641,18 @@ export default function LandingPage() {
           <div className="w-[700px] h-[400px] rounded-full blur-[120px]" style={{ background: 'rgba(201,168,76,0.04)' }} />
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="max-w-3xl mx-auto text-center relative z-10"
-        >
-          <h2
-            className="text-4xl md:text-5xl lg:text-6xl mb-5 leading-tight"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-          >
+        <Reveal className="max-w-3xl mx-auto text-center relative z-10">
+          <h2 className="type-display-xl text-4xl md:text-5xl lg:text-6xl mb-5" style={{ color: 'var(--white)' }}>
             READY TO TRADE<br />
             <span style={{ color: 'var(--gold)' }}>SMARTER?</span>
           </h2>
           <p className="text-lg mb-10 max-w-xl mx-auto" style={{ color: 'var(--muted)' }}>
             Join traders using AI-powered signals to find opportunities in Indian and US markets every day.
           </p>
-          <motion.button
+          <button
+            type="button"
             onClick={() => navigate('/dashboard')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-md text-lg font-medium"
+            className="press inline-flex items-center gap-2 px-10 py-4 rounded-md text-lg font-medium"
             style={{
               background: 'var(--gold)',
               color: '#000',
@@ -716,8 +660,8 @@ export default function LandingPage() {
             }}
           >
             Launch Terminal <ArrowRight className="w-5 h-5" />
-          </motion.button>
-        </motion.div>
+          </button>
+        </Reveal>
       </section>
 
       {/* Footer */}

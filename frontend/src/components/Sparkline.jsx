@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 export default function Sparkline({ data = [], color = '#00c896', width = 140, height = 40 }) {
+  // Hooks run before the early return so the order stays stable.
+  const rawId = useId();
   if (!data || data.length < 2) return null;
 
   const min = Math.min(...data);
@@ -13,13 +15,22 @@ export default function Sparkline({ data = [], color = '#00c896', width = 140, h
     return `${x},${y}`;
   }).join(' ');
 
-  const gradientId = `spark-${Math.random().toString(36).slice(2, 8)}`;
+  // A stable id — Math.random() minted a new one on every render, which
+  // orphaned the gradient and forced the browser to re-resolve the paint.
+  const gradientId = `spark-${rawId.replace(/[^a-zA-Z0-9]/g, '')}`;
 
   // Fill area path
   const fillPoints = `0,${height} ${points} ${width},${height}`;
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
+    <svg
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="block"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.2" />
@@ -34,6 +45,7 @@ export default function Sparkline({ data = [], color = '#00c896', width = 140, h
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
       />
     </svg>
   );

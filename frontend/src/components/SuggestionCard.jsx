@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import Sparkline from './Sparkline';
 
 const getAge = (epoch) => {
@@ -35,17 +34,18 @@ const signalStyles = {
   },
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.05, duration: 0.3, ease: 'easeOut' },
-  }),
-};
+// Stagger is decorative. Capped so a long grid never makes the last card
+// wait — 30-80ms between items, and no more than ~300ms of cascade total.
+const STAGGER_STEP = 50;
+const STAGGER_CAP = 6;
 
-export default function SuggestionCard({ card, index = 0 }) {
+export default function SuggestionCard({ card, index = 0, stagger = false }) {
   const navigate = useNavigate();
+  // Frozen at mount: re-rendering must never re-time an animation already
+  // in flight, and a card that persists across a refresh must not replay it.
+  const [entranceDelay] = useState(
+    () => (stagger ? Math.min(index, STAGGER_CAP) * STAGGER_STEP : 0)
+  );
   const signal = (card.signal || card.action || 'BUY').toUpperCase();
   const style = signalStyles[signal] || signalStyles.BUY;
   const isStale = card.timestamp_epoch && (Date.now() / 1000 - card.timestamp_epoch) > 3600;
@@ -72,50 +72,46 @@ export default function SuggestionCard({ card, index = 0 }) {
     return `${currencySymbol}${Number(p).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const open = () =>
+    navigate(`/stock/${encodeURIComponent(ticker)}?category=${encodeURIComponent(card.category || '')}`);
+
   return (
-    <motion.div
-      custom={index}
-      variants={cardVariants}
-      initial="hidden"
-      animate="visible"
-      className="rounded-md cursor-pointer transition-all duration-200"
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${ticker} ${signal} signal`}
+      className="press-surface surface-card rise-in rounded-md overflow-hidden cursor-pointer text-left"
       style={{
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
-        overflow: 'hidden',
+        // Only the first paint of a grid earns the cascade; a 60s refresh or
+        // a tab switch must not replay it.
+        animationDelay: `${entranceDelay}ms`,
       }}
-      whileHover={{
-        y: -2,
-        transition: { duration: 0.2 },
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
       }}
-      onHoverStart={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border2)';
-        e.currentTarget.style.background = '#161616';
-      }}
-      onHoverEnd={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border)';
-        e.currentTarget.style.background = 'var(--card)';
-      }}
-      onClick={() => navigate(`/stock/${encodeURIComponent(ticker)}?category=${encodeURIComponent(card.category || '')}`)}
     >
       {/* Top color stripe */}
       <div className="h-[2px]" style={{ background: style.stripe }} />
 
       <div className="p-4">
         {/* Header: Ticker + badge */}
-        <div className="flex items-start justify-between mb-1">
-          <div>
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="min-w-0">
             <h3
-              className="text-[22px] leading-tight"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+              className="type-display-md text-[22px] truncate"
+              style={{ color: 'var(--white)' }}
             >
               {ticker}
             </h3>
-            <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>
+            <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
               {companyName}{exchange ? ` · ${exchange}` : ''}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-col items-end gap-1 shrink-0">
             <span
               className="px-2.5 py-1 rounded text-[10px] uppercase font-medium tracking-wider"
               style={{
@@ -140,14 +136,14 @@ export default function SuggestionCard({ card, index = 0 }) {
         {/* Price */}
         <div className="mt-3 flex items-baseline gap-2">
           <span
-            className="text-xl"
+            className="tnum text-xl"
             style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
           >
             {formatPrice(price)}
           </span>
           {changePct !== 0 && (
             <span
-              className="text-sm"
+              className="tnum text-sm"
               style={{
                 fontFamily: 'var(--font-mono)',
                 color: changePct >= 0 ? 'var(--green)' : 'var(--red)',
@@ -177,14 +173,11 @@ export default function SuggestionCard({ card, index = 0 }) {
               className="px-2 py-1.5 rounded"
               style={{ border: '1px solid var(--border)', background: 'var(--bg)' }}
             >
-              <div
-                className="text-[9px] uppercase mb-0.5"
-                style={{ color: 'var(--muted)', letterSpacing: '0.5px' }}
-              >
+              <div className="type-label text-[9px] mb-0.5" style={{ color: 'var(--muted)' }}>
                 {item.label}
               </div>
               <div
-                className="text-xs"
+                className="tnum text-xs"
                 style={{ fontFamily: 'var(--font-mono)', color: item.valueColor }}
               >
                 {item.value}
@@ -195,20 +188,23 @@ export default function SuggestionCard({ card, index = 0 }) {
 
         {/* Confidence bar */}
         <div className="mt-3 flex items-center gap-2">
-          <span className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
+          <span className="type-label" style={{ color: 'var(--muted)' }}>
             Confidence
           </span>
-          <div className="flex-1 h-[3px] rounded-full" style={{ background: 'var(--border)' }}>
+          <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+            {/* scaleX, not width: transform skips layout and paint. */}
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full origin-left"
               style={{
-                width: `${Math.min(confidence, 100)}%`,
-                background: `linear-gradient(90deg, var(--gold-dim), var(--gold))`,
+                width: '100%',
+                transform: `scaleX(${Math.min(confidence, 100) / 100})`,
+                transition: 'transform var(--dur-tab) var(--ease-out)',
+                background: 'linear-gradient(90deg, var(--gold-dim), var(--gold))',
               }}
             />
           </div>
           <span
-            className="text-[11px]"
+            className="tnum text-[11px]"
             style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}
           >
             {Math.round(confidence)}%
@@ -225,7 +221,7 @@ export default function SuggestionCard({ card, index = 0 }) {
             )}
             {rr && (
               <span
-                className="text-[11px] whitespace-nowrap"
+                className="tnum text-[11px] whitespace-nowrap"
                 style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted2)' }}
               >
                 R:R {rr}
@@ -238,15 +234,13 @@ export default function SuggestionCard({ card, index = 0 }) {
         <div className="mt-3 flex items-center gap-1.5">
           <span
             className="inline-block w-1.5 h-1.5 rounded-full"
-            style={{
-              background: isStale ? 'var(--red)' : 'var(--green)',
-            }}
+            style={{ background: isStale ? 'var(--red)' : 'var(--green)' }}
           />
           <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
             {timestamp ? `${timestamp}` : ''}{age ? ` · ${age}` : ''}
           </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

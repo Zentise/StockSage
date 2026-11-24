@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { createChart, ColorType } from 'lightweight-charts';
 import TopBar from '../components/TopBar';
 import { getChart, getSuggestions, streamAnalysis } from '../api';
@@ -20,6 +19,14 @@ export default function StockDetail({ market, setMarket }) {
   const [streamLogs, setStreamLogs] = useState([]);
   const [streaming, setStreaming] = useState(false);
   const [indicators, setIndicators] = useState(null);
+  const logRef = useRef(null);
+
+  // Follow the stream. `instant` on purpose: lines land every few hundred ms,
+  // and a smooth scroll would still be catching up when the next one arrives.
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [streamLogs]);
 
   // Fetch chart data
   useEffect(() => {
@@ -110,9 +117,16 @@ export default function StockDetail({ market, setMarket }) {
       chart.applyOptions({ width: container.clientWidth });
     };
     window.addEventListener('resize', resizeHandler);
+    // The container also changes width when the layout crosses a breakpoint
+    // or the sidebar collapses, neither of which is a window resize.
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(resizeHandler)
+      : null;
+    observer?.observe(container);
 
     return () => {
       window.removeEventListener('resize', resizeHandler);
+      observer?.disconnect();
       chart.remove();
       chartRef.current = null;
     };
@@ -209,11 +223,9 @@ export default function StockDetail({ market, setMarket }) {
       <div className="max-w-[1440px] mx-auto px-6 py-6">
         {/* Back link */}
         <button
+          type="button"
           onClick={() => navigate('/dashboard')}
-          className="text-[11px] uppercase tracking-wider mb-4 transition-colors"
-          style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}
-          onMouseEnter={(e) => e.target.style.color = 'var(--gold)'}
-          onMouseLeave={(e) => e.target.style.color = 'var(--muted)'}
+          className="press hover-gold font-body text-muted text-[11px] uppercase tracking-wider mb-4"
         >
           ← Back to Terminal
         </button>
@@ -226,8 +238,8 @@ export default function StockDetail({ market, setMarket }) {
           <div className="flex items-start justify-between mb-4">
             <div>
               <h1
-                className="text-[36px] leading-none"
-                style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
+                className="type-display-lg text-[36px] break-all"
+                style={{ color: 'var(--white)' }}
               >
                 {decodeURIComponent(ticker)}
               </h1>
@@ -247,14 +259,14 @@ export default function StockDetail({ market, setMarket }) {
 
           <div className="flex items-baseline gap-3 mb-4">
             <span
-              className="text-3xl"
+              className="tnum text-3xl"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
             >
               {price ? formatPrice(price) : '--'}
             </span>
             {changePct !== 0 && (
               <span
-                className="text-lg"
+                className="tnum text-lg"
                 style={{
                   fontFamily: 'var(--font-mono)',
                   color: changePct >= 0 ? 'var(--green)' : 'var(--red)',
@@ -280,7 +292,7 @@ export default function StockDetail({ market, setMarket }) {
                 <div className="text-[9px] uppercase mb-0.5" style={{ color: 'var(--muted)', letterSpacing: '0.5px' }}>
                   {item.label}
                 </div>
-                <div className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: item.color }}>
+                <div className="tnum text-sm" style={{ fontFamily: 'var(--font-mono)', color: item.color }}>
                   {item.value}
                 </div>
               </div>
@@ -290,16 +302,17 @@ export default function StockDetail({ market, setMarket }) {
             {confidence > 0 && (
               <div className="flex items-center gap-2 ml-auto">
                 <span className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>Confidence</span>
-                <div className="w-24 h-[3px] rounded-full" style={{ background: 'var(--border)' }}>
+                <div className="w-24 h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
                   <div
-                    className="h-full rounded-full"
+                    className="h-full w-full rounded-full origin-left"
                     style={{
-                      width: `${Math.min(confidence, 100)}%`,
+                      transform: `scaleX(${Math.min(confidence, 100) / 100})`,
+                      transition: 'transform var(--dur-tab) var(--ease-out)',
                       background: 'linear-gradient(90deg, var(--gold-dim), var(--gold))',
                     }}
                   />
                 </div>
-                <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
+                <span className="tnum text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
                   {Math.round(confidence)}%
                 </span>
               </div>
@@ -308,7 +321,7 @@ export default function StockDetail({ market, setMarket }) {
         </div>
 
         {/* Two-column layout */}
-        <div className="grid gap-6" style={{ gridTemplateColumns: '60% 40%' }}>
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           {/* Left: Chart */}
           <div
             className="rounded-md overflow-hidden"
@@ -322,10 +335,7 @@ export default function StockDetail({ market, setMarket }) {
 
           {/* Right: Technical breakdown */}
           <div className="space-y-3">
-            <h3
-              className="text-[18px]"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-            >
+            <h3 className="type-display-sm text-[18px]" style={{ color: 'var(--white)' }}>
               TECHNICAL BREAKDOWN
             </h3>
             <div className="h-[1px]" style={{ background: 'var(--gold)', width: '40px' }} />
@@ -352,7 +362,7 @@ export default function StockDetail({ market, setMarket }) {
                     </span>
                     <div className="text-right">
                       <span
-                        className="text-xs block"
+                        className="tnum text-xs block"
                         style={{ fontFamily: 'var(--font-mono)', color: 'var(--white)' }}
                       >
                         {typeof item.value === 'number' ? item.value.toFixed(2) : item.value}
@@ -382,18 +392,16 @@ export default function StockDetail({ market, setMarket }) {
         <div className="mt-6">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h3
-                className="text-[18px]"
-                style={{ fontFamily: 'var(--font-display)', color: 'var(--white)' }}
-              >
+              <h3 className="type-display-sm text-[18px]" style={{ color: 'var(--white)' }}>
                 AGENT ANALYSIS
               </h3>
               <div className="h-[1px] mt-1" style={{ background: 'var(--gold)', width: '40px' }} />
             </div>
             <button
+              type="button"
               onClick={startAnalysis}
               disabled={streaming}
-              className="px-3 py-1.5 rounded text-[11px] uppercase tracking-wider transition-colors flex items-center gap-1.5"
+              className="press px-3 py-1.5 rounded text-[11px] uppercase tracking-wider flex items-center gap-1.5"
               style={{
                 background: streaming ? 'rgba(201,168,76,0.04)' : 'rgba(201,168,76,0.1)',
                 color: streaming ? 'rgba(201,168,76,0.4)' : 'var(--gold)',
@@ -407,6 +415,9 @@ export default function StockDetail({ market, setMarket }) {
           </div>
 
           <div
+            ref={logRef}
+            role="log"
+            aria-live="polite"
             className="p-4 rounded-md max-h-[300px] overflow-y-auto"
             style={{
               background: 'var(--surface)',
@@ -421,12 +432,9 @@ export default function StockDetail({ market, setMarket }) {
             ) : (
               <div>
                 {streamLogs.map((log, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="py-1 text-xs leading-relaxed"
+                    className="log-in py-1 text-xs leading-relaxed"
                     style={{
                       color: log.type === 'error' ? 'var(--red)'
                         : log.type === 'complete' ? 'var(--gold)'
@@ -441,7 +449,7 @@ export default function StockDetail({ market, setMarket }) {
                   >
                     <span style={{ color: 'var(--muted2)', marginRight: '6px' }}>[{String(i + 1).padStart(2, '0')}]</span>
                     {log.text}
-                  </motion.div>
+                  </div>
                 ))}
                 {streaming && (
                   <span className="inline-block w-2 h-3 ml-1 blink" style={{ background: 'var(--green)' }} />

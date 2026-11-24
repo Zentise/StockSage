@@ -1,6 +1,6 @@
 import { useRef, type PointerEvent } from 'react';
 import { Link } from 'react-router';
-import type { LiveSignal } from '../api/client';
+import { useSetups, type LiveSignal } from '../api/client';
 import { ago, CATEGORY, money, symbol } from '../lib/format';
 import { useApp } from '../state';
 import { Change, Direction, Rail, Spark, Tug } from './bits';
@@ -13,6 +13,8 @@ export default function SignalCard({ s, index = 0 }: { s: LiveSignal; index?: nu
   const price = live[s.ticker]?.price ?? s.quote?.price ?? null;
   const change = live[s.ticker]?.change_pct ?? s.quote?.change_pct;
   const entry = s.fill_price ?? s.entry;
+  const { data: catalog } = useSetups(s.market === 'us' ? 'us' : 'india');
+  const info = catalog?.find((c) => c.key === s.setup);
 
   const tilt = (e: PointerEvent) => {
     const n = el.current;
@@ -67,6 +69,12 @@ export default function SignalCard({ s, index = 0 }: { s: LiveSignal; index?: nu
           </p>
         )}
 
+        {s.direction !== 'AVOID' && info && (
+          <div className="layer-1 mt-3 flex items-center gap-2 text-[13px]" title={info.blurb}>
+            <span className="truncate text-ink2">{info.label}</span>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 ring-1 ring-inset ${info.validated ? 'bg-up/15 text-uptext ring-up/40' : 'bg-raised text-ink3 ring-line2'}`}>{info.validated ? 'beat random' : 'unproven'}</span>
+          </div>
+        )}
         <div className="layer-1 mt-4"><Tug yes={s.evidence_for} no={s.evidence_against} yesLabel={s.direction === 'BUY' ? 'bullish' : 'bearish'} noLabel={s.direction === 'BUY' ? 'bearish' : 'bullish'} /></div>
 
         <div className="layer-1 mt-4 flex items-center justify-between gap-3 text-[13px] text-ink3">

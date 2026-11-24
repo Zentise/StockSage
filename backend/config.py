@@ -38,6 +38,13 @@ ALLOWED_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
+# How much of India the scan covers: 50, 100, 200 or 500. Wider means many more price requests.
+INDIA_UNIVERSE = _int("STOCKSAGE_INDIA_UNIVERSE", 50) if _int("STOCKSAGE_INDIA_UNIVERSE", 50) in (50, 100, 200, 500) else 50
+# The owner's key. When set, the journal, alerts, chat and debate need it; when empty (local use) nothing does.
+OWNER_TOKEN = os.getenv("OWNER_TOKEN", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+ALERT_UNPROVEN = os.getenv("ALERT_UNPROVEN", "0") == "1"   # also message about setups that have not beaten random
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 SCAN_INTERVAL = _int("STOCKSAGE_SCAN_INTERVAL_SECONDS", 300)
 OFF_HOURS_INTERVAL = _int("STOCKSAGE_OFF_HOURS_INTERVAL_SECONDS", 1800)
 BACKGROUND = os.getenv("STOCKSAGE_BACKGROUND", "1") != "0"

@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
 Market = Literal["india", "us"]
 # Stored naive in UTC; always sent with an explicit Z so browsers don't read it as local time.
@@ -29,6 +29,7 @@ class SignalOut(BaseModel):
     name: str
     direction: Literal["BUY", "SELL", "AVOID"]
     category: Literal["intraday", "short_term", "long_term"]
+    setup: str = "confluence"
     timeframe: str
     entry: float
     stop: float | None
@@ -79,6 +80,7 @@ class Status(BaseModel):
     last_scan: str | None
     scanning: bool
     ai_enabled: bool
+    owner_required: bool = False
 
 
 class Constituent(BaseModel):
@@ -248,6 +250,14 @@ class CurvePoint(BaseModel):
     control: float
 
 
+class SetupRecord(BaseModel):
+    label: str
+    active: int
+    validated: bool
+    replay: "ReplaySummary | None" = None
+    live: Bucket
+
+
 class RecordOut(BaseModel):
     market: str
     engine: str
@@ -256,6 +266,7 @@ class RecordOut(BaseModel):
     void: int
     overall: Bucket
     by_category: dict[str, Bucket]
+    by_setup: dict[str, SetupRecord]
     curve: list[CurvePoint]
     trades: list[SignalOut]
 
@@ -277,6 +288,22 @@ class ReplaySummary(BaseModel):
     edge_r: float | None = None
     edge_low: float | None = None
     edge_high: float | None = None
+    edge_first_half: float | None = None
+    edge_second_half: float | None = None
+
+
+class SetupReplay(ReplaySummary):
+    label: str
+    validated: bool
+    by_year: dict[str, ReplaySummary] = {}
+
+
+class SetupInfo(BaseModel):
+    key: str
+    label: str
+    blurb: str
+    validated: bool
+    replay: ReplaySummary | None = None
 
 
 class ReplayOut(BaseModel):
@@ -288,3 +315,237 @@ class ReplayOut(BaseModel):
     overall: ReplaySummary
     by_category: dict[str, ReplaySummary]
     by_year: dict[str, ReplaySummary]
+    by_setup: dict[str, SetupReplay] = {}
+
+
+# ------------------------------------------------------------ owner: journal, alerts, brief, AI
+
+Ticker = Annotated[str, Field(pattern=r"^[A-Z0-9^&.=\-]{1,20}$")]
+
+
+class PositionIn(BaseModel):
+    ticker: Ticker
+    qty: float = Field(gt=0, le=1e9)
+    entry: float = Field(gt=0)
+    stop: float | None = Field(default=None, gt=0)
+    target: float | None = Field(default=None, gt=0)
+    paper: bool = True
+    why: str = Field(default="", max_length=600)
+    signal_id: int | None = None
+    setup: str | None = Field(default=None, max_length=16)
+
+    @model_validator(mode="after")
+    def _levels(self):
+        if self.stop is not None and self.stop >= self.entry:
+            raise ValueError("The stop must be below the entry (this journal tracks buys).")
+        if self.target is not None and self.target <= self.entry:
+            raise ValueError("The target must be above the entry.")
+        return self
+
+
+class PositionOut(BaseModel):
+    id: int
+    market: str
+    ticker: str
+    name: str
+    paper: bool
+    qty: float
+    entry: float
+    stop: float | None
+    target: float | None
+    opened_at: UTCTime
+    setup: str | None
+    why: str
+    status: str
+    exit_price: float | None
+    closed_at: UTCTime | None
+    close_reason: str | None
+    lesson: str
+    mistake: str | None
+    price: float | None
+    pnl: float | None
+    pnl_pct: float | None
+    r: float | None
+    risk: float | None
+
+
+class CloseIn(BaseModel):
+    price: float = Field(gt=0)
+    reason: Literal["manual", "stop", "target"] = "manual"
+    lesson: str = Field(default="", max_length=600)
+    mistake: str | None = Field(default=None, max_length=24)
+
+
+class PositionPatch(BaseModel):
+    lesson: str | None = Field(default=None, max_length=600)
+    mistake: str | None = Field(default=None, max_length=24)
+    stop: float | None = Field(default=None, gt=0)
+    target: float | None = Field(default=None, gt=0)
+
+
+class JournalStats(BaseModel):
+    n: int
+    with_r: int
+    win_rate: float | None
+    avg_r: float | None
+    total_r: float | None
+    avg_win_r: float | None
+    avg_loss_r: float | None
+
+
+class JournalPoint(BaseModel):
+    at: str
+    ticker: str
+    r: float
+    total: float
+
+
+class PortfolioOut(BaseModel):
+    open: list[PositionOut]
+    closed: list[PositionOut]
+    open_risk: float
+    open_pnl: float
+    stats: JournalStats
+    curve: list[JournalPoint]
+    by_mistake: dict[str, JournalStats]
+    by_setup: dict[str, JournalStats]
+    mistakes: list[str]
+
+
+class AlertIn(BaseModel):
+    ticker: Ticker
+    kind: Literal["above", "below"]
+    level: float = Field(gt=0)
+    note: str = Field(default="", max_length=200)
+
+
+class AlertOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    market: str
+    ticker: str
+    kind: str
+    level: float
+    note: str
+    active: bool
+    created_at: UTCTime
+    fired_at: UTCTime | None
+    fired_price: float | None
+
+
+class BriefMover(BaseModel):
+    ticker: str
+    name: str
+    price: float
+    change_pct: float
+
+
+class BriefSetup(BaseModel):
+    ticker: str
+    name: str
+    setup: str
+    entry: float
+    stop: float | None
+    target: float | None
+    validated: bool
+    pending: bool
+
+
+class BriefPosition(BaseModel):
+    ticker: str
+    name: str
+    qty: float
+    entry: float
+    stop: float | None
+    target: float | None
+    price: float | None
+    pnl: float | None
+    r: float | None
+    paper: bool
+
+
+class BriefAlert(BaseModel):
+    ticker: str
+    kind: str
+    level: float
+
+
+class BriefRecord(BaseModel):
+    n: int
+    paired_n: int
+    edge_r: float | None
+    edge_low: float | None
+    edge_high: float | None
+
+
+class BriefOut(BaseModel):
+    market: str
+    date: str
+    status: str
+    opens_at: str
+    indices: list[BriefMover]
+    advancing: int
+    declining: int
+    gainers: list[BriefMover]
+    losers: list[BriefMover]
+    setups: list[BriefSetup]
+    positions: list[BriefPosition]
+    alerts: list[BriefAlert]
+    record: BriefRecord
+    headlines: list[NewsItem]
+    telegram: bool
+
+
+class DebateSide(BaseModel):
+    case: list[str]
+    wrong_if: str
+
+
+class DebateOut(BaseModel):
+    bull: DebateSide
+    bear: DebateSide
+    summary: str
+    agree: list[str]
+    clash: list[str]
+    check_first: list[str]
+    removed: int
+    model: str
+    cached: bool
+    created_at: str
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=600)
+
+
+class ChatIn(BaseModel):
+    ticker: Ticker | None = None
+    market: Market = "india"
+    messages: list[ChatMessage] = Field(min_length=1, max_length=12)
+
+    @model_validator(mode="after")
+    def _ends_with_question(self):
+        if self.messages[-1].role != "user":
+            raise ValueError("The last message must be the question.")
+        return self
+
+
+class ChatOut(BaseModel):
+    answer: str
+    removed: int
+    model: str
+
+
+class AuthOut(BaseModel):
+    required: bool
+    ok: bool
+
+
+class SettingsOut(BaseModel):
+    owner_required: bool
+    telegram: bool
+    ai_enabled: bool
+    india_universe: int
+    alert_unproven: bool

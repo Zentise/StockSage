@@ -215,3 +215,5 @@ skills/
 
 # Local database
 stocksage.db*
+api.log
+replay.log

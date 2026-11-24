@@ -3,7 +3,8 @@ services:
     name: stocksage-api
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    # One worker on purpose: the scan, alert and brief loops live inside it.
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
@@ -11,4 +12,12 @@ services:
       - key: DATABASE_URL # a Postgres URL (e.g. Neon). Without it history is lost on every restart.
         sync: false
       - key: GROQ_API_KEY
+        sync: false
+      - key: OWNER_TOKEN # protects journal, alerts, chat and debate
+        sync: false
+      - key: ALLOWED_ORIGINS # your site(s), comma separated
+        value: https://thestocksage.vercel.app
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
         sync: false

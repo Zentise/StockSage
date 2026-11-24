@@ -11,6 +11,10 @@ A research and trade-planning desk for Indian equities (with a US view) that sho
 - **Trade planner.** Sizes the position from what you are willing to lose, then simulates 4,000 futures from the stock's own behaviour and draws them as terrain.
 - **A record that is hard to fool.** Every setup is followed on real prices to its stop, target or time limit, and compared with random stocks bought at the same moment under the same rule.
 - **AI research notes.** Argues for and against using only the data on the page. Any statement with a number that is not in that data is removed, and the note says so.
+- **Setups that must earn their place.** Four kinds (the original engine, a pullback, a 55-day breakout, a two-day dip) are each replayed against random stocks. A kind is called "beat random" only after a long replay, in both halves of the period and after costs; none has yet, and the cards say "unproven".
+- **Journal and paper trading.** Log a trade, score it in R, tag your slips. Paper trades close themselves on the real price path.
+- **Alerts and a morning brief** on Telegram: price levels, stop and target on your real trades, and a data-only brief at 8:45.
+- **Bull and bear, argued.** Three AI analysts work from the same facts; a chat answers questions about the page. Everything passes the number check and an "orders to trade" filter.
 - **Works when the market is closed.** After the close it scans finished bars, and setups wait for the next open.
 
 ![Odds](assets/odds.png)
@@ -23,6 +27,11 @@ Not better than chance, and the app says so. Replayed over the Nifty 50 from Dec
 |---|---|---|---|---|
 | India | 1,507 | +0.14R | +0.17R | −0.02R (−0.08 to +0.03) |
 | US | 962 | +0.17R | +0.21R | −0.04R (−0.14 to +0.06) |
+
+| | Pullback | 55-day breakout | Two-day dip |
+|---|---|---|---|
+| India, difference from random | +0.06R (−0.07 to +0.20) | −0.11R (−0.21 to −0.02) | +0.01R (−0.04 to +0.05) |
+| US, difference from random | +0.16R (−0.04 to +0.32) | −0.01R (−0.33 to +0.27) | +0.03R (−0.07 to +0.13) |
 
 R is profit divided by the amount risked. Before costs. Reproduce it with `python -m backend.replay india us`. The current engine is a baseline to beat, not a source of tips.
 
@@ -82,7 +91,19 @@ cd frontend && npm test && npm run build
 
 After changing the API: `python scripts/export_openapi.py && cd frontend && npm run gen:api`.
 
+## Private features and alerts
+
+Journal, alerts, chat and the debate are for one person. Set `OWNER_TOKEN` on the server and they ask for it in the browser (it is kept on that device); with it empty, as locally, nothing is locked.
+
+Telegram: message @BotFather, create a bot, put its token in `TELEGRAM_BOT_TOKEN`; send your bot any message, open `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `chat.id` into `TELEGRAM_CHAT_ID`. Then "Send to Telegram" on the Morning brief page tests it. Alerts ring once, only during the session.
+
+`STOCKSAGE_INDIA_UNIVERSE=100|200|500` widens the daily scan beyond the Nifty 50 (intraday scans and the random control stay on the Nifty 50).
+
+Check the AI against attacks with `python -m backend.evals` (offline) or `python -m backend.evals --live TCS.NS` (real model, poisoned headline).
+
 ## Deploying
+
+See [DEPLOY.md](DEPLOY.md) for the step-by-step, including how to redeploy later. In short:
 
 Backend on any Python host with `DATABASE_URL` set to Postgres (a free Neon database is enough); without it, history is lost on restart. Run one worker, because the scan loop lives in it. Frontend on Vercel with `VITE_WS_URL` pointing at the backend.
 

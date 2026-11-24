@@ -10,14 +10,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sqlalchemy import func, select
+from ta.volatility import AverageTrueRange
 
 from backend import market_hours as mh
 from backend import universe
 from backend.config import ROOT
 from backend.db import Session, Signal, get_meta, set_meta, utcnow
+from backend.engine import strategies
 from backend.engine.outcome import resolve
 from backend.engine.signals import RULES, levels
 from backend.providers import yahoo
+from backend.services import setups as setup_info
 
 log = logging.getLogger(__name__)
 BACKUP = ROOT / "backups" / "live-signals_2026-08-03_to_2026-11-23.json"
@@ -93,13 +96,11 @@ def _control_r(ticker: str, s: Signal) -> float | None:
     if hourly.empty or len(daily) < 60:
         return None
     before = hourly[hourly.index <= s.created_at]
-    past = daily[daily.index < pd.Timestamp(s.created_at).normalize()].iloc[-15:]
-    if before.empty or len(past) < 15:
+    past = daily[daily.index < pd.Timestamp(s.created_at).normalize()]
+    if before.empty or len(past) < 40:
         return None
     price = float(before["Close"].iloc[-1])
-    prev = past["Close"].shift(1)
-    tr = pd.concat([past["High"] - past["Low"], (past["High"] - prev).abs(), (past["Low"] - prev).abs()], axis=1).max(axis=1)
-    atr = float(tr.iloc[1:].mean())
+    atr = float(AverageTrueRange(past["High"], past["Low"], past["Close"], 14).average_true_range().iloc[-1])
     stop, target = levels(price, atr, s.category, True)
     if s.engine == "v1":
         # Same rule the v1 signal used, so the comparison is like for like.
@@ -188,13 +189,17 @@ def _bucket(rows: list[Signal]) -> dict:
 
 def record(market: str, engine: str) -> dict:
     with Session() as db:
-        rows = list(db.scalars(select(Signal).where(
+        raw = list(db.scalars(select(Signal).where(
             Signal.market == market, Signal.engine == engine, Signal.direction != "AVOID",
             Signal.status.in_(DONE + ("active",)))))
         voids = db.scalar(select(func.count()).select_from(Signal).where(
             Signal.market == market, Signal.engine == engine, Signal.status == "void")) or 0
-    rows = _dedupe(rows)
-    closed = sorted((s for s in rows if s.status in DONE and s.r is not None), key=lambda s: s.exit_at or s.created_at)
+    rows = _dedupe(raw)
+
+    def finished(items: list[Signal]) -> list[Signal]:
+        return sorted((s for s in items if s.status in DONE and s.r is not None), key=lambda s: s.exit_at or s.created_at)
+
+    closed = finished(rows)
     # Only trades that have a control: two lines over different trades would not be comparable.
     curve, total, ctrl = [], 0.0, 0.0
     for s in (x for x in closed if x.control_r is not None):
@@ -202,12 +207,21 @@ def record(market: str, engine: str) -> dict:
         ctrl += s.control_r
         curve.append({"at": (s.exit_at or s.created_at).date().isoformat(), "ticker": s.ticker, "r": s.r,
                       "total": round(total, 2), "control": round(ctrl, 2)})
+    by_setup = {}
+    for key in sorted({s.setup for s in raw}):
+        mine = [s for s in raw if s.setup == key]
+        info = setup_info.summary(market, key)
+        by_setup[key] = {
+            "label": strategies.LABELS.get(key, key), "active": sum(s.status == "active" for s in _dedupe(mine)),
+            "validated": setup_info.is_validated(market, key), "replay": info, "live": _bucket(finished(_dedupe(mine))),
+        }
     return {
         "market": market, "engine": engine,
         "since": min((s.created_at for s in rows), default=None),
         "active": sum(s.status == "active" for s in rows), "void": voids,
         "overall": _bucket(closed),
         "by_category": {c: _bucket([s for s in closed if s.category == c]) for c in RULES if any(s.category == c for s in closed)},
+        "by_setup": by_setup,
         "curve": curve,
         "trades": list(reversed(closed))[:200],
     }

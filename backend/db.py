@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text, create_engine, event
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from backend.config import DATABASE_URL
@@ -36,6 +36,7 @@ class Signal(Base):
     name: Mapped[str] = mapped_column(String(120))
     direction: Mapped[str] = mapped_column(String(8))
     category: Mapped[str] = mapped_column(String(16))
+    setup: Mapped[str] = mapped_column(String(16), default="confluence", server_default="confluence", index=True)
     timeframe: Mapped[str] = mapped_column(String(32), default="")
     entry: Mapped[float] = mapped_column(Float)
     stop: Mapped[float | None] = mapped_column(Float)
@@ -74,8 +75,70 @@ class Note(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class Position(Base):
+    """A trade the owner took (or paper-traded) and wants to journal. Long only."""
+    __tablename__ = "positions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market: Mapped[str] = mapped_column(String(8), index=True)
+    ticker: Mapped[str] = mapped_column(String(24), index=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    paper: Mapped[bool] = mapped_column(Boolean, default=True)
+    qty: Mapped[float] = mapped_column(Float)
+    entry: Mapped[float] = mapped_column(Float)
+    stop: Mapped[float | None] = mapped_column(Float)
+    target: Mapped[float | None] = mapped_column(Float)
+    opened_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    signal_id: Mapped[int | None] = mapped_column(Integer)          # the setup it came from, if any
+    setup: Mapped[str | None] = mapped_column(String(16))
+    why: Mapped[str] = mapped_column(Text, default="")              # the reason, in the owner's words
+    status: Mapped[str] = mapped_column(String(8), default="open", index=True)   # open | closed
+    exit_price: Mapped[float | None] = mapped_column(Float)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    close_reason: Mapped[str | None] = mapped_column(String(12))    # stop | target | manual
+    lesson: Mapped[str] = mapped_column(Text, default="")           # what the owner learned
+    mistake: Mapped[str | None] = mapped_column(String(24))         # tag, e.g. "moved stop"
+    alerted: Mapped[str | None] = mapped_column(String(8))          # stop/target message already sent
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market: Mapped[str] = mapped_column(String(8))
+    ticker: Mapped[str] = mapped_column(String(24), index=True)
+    kind: Mapped[str] = mapped_column(String(8))                    # above | below
+    level: Mapped[float] = mapped_column(Float)
+    note: Mapped[str] = mapped_column(String(200), default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    fired_at: Mapped[datetime | None] = mapped_column(DateTime)
+    fired_price: Mapped[float | None] = mapped_column(Float)
+
+
+class AiCache(Base):
+    """One AI result per key and day (debates, briefs). Keeps the free quota for new questions."""
+    __tablename__ = "ai_cache"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    body: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+def _add_missing_columns() -> None:
+    """create_all makes new tables but never alters old ones. Add columns that arrived later."""
+    insp = inspect(engine)
+    have = {c["name"] for c in insp.get_columns("signals")}
+    if "setup" not in have:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE signals ADD COLUMN setup VARCHAR(16) NOT NULL DEFAULT 'confluence'"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_signals_setup ON signals (setup)"))
+
+
 def init() -> None:
     Base.metadata.create_all(engine)
+    _add_missing_columns()
 
 
 def get_meta(key: str) -> str | None:

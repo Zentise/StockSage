@@ -25,6 +25,11 @@ Reply with JSON only:
  "missing": ["data you did not have, empty list if none"]}"""
 
 _NUM = re.compile(r"(?<![A-Za-z\d.])\d[\d,]*\.?\d*")
+# Instructions to trade, guarantees and hype are not research. Dropped wherever they appear.
+ADVICE = re.compile(
+    r"\b(you (should|must|need to|ought to) (buy|sell|short|exit|enter|hold)|(buy|sell|short) (it |this |the stock )?(now|today|immediately)"
+    r"|i (recommend|suggest|advise) (you )?(buy|sell|short|hold)|guaranteed?|risk[- ]free|sure[- ]shot|can'?t lose|will (definitely|certainly) (rise|fall|go))\b",
+    re.I)
 
 
 def _numbers(text: str) -> list[float]:
@@ -51,7 +56,8 @@ def allowed_numbers(facts: dict) -> set[float]:
 
 
 def grounded(text: str, ok: set[float]) -> bool:
-    return all(n in ok or round(n, 1) in ok for n in _numbers(text))
+    """True when every number in the text came from the facts and it gives no trading orders."""
+    return not ADVICE.search(text) and all(n in ok or round(n, 1) in ok for n in _numbers(text))
 
 
 def clean(raw: dict, facts: dict) -> dict:
@@ -75,6 +81,31 @@ def clean(raw: dict, facts: dict) -> dict:
 
 class NoteError(Exception):
     """Shown to the user as is. A failed note must look failed, not like an answer."""
+
+
+def ask(system: str, payload: dict | str, max_tokens: int = 1500, json_mode: bool = True) -> dict | str:
+    """One call to the model. Raises NoteError with a message fit to show the user."""
+    if not config.GROQ_API_KEY:
+        raise NoteError("No GROQ_API_KEY is set, so AI features are off.")
+    try:
+        resp = Groq(api_key=config.GROQ_API_KEY, timeout=45, max_retries=1).chat.completions.create(
+            model=config.GROQ_MODEL,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": payload if isinstance(payload, str) else json.dumps(payload, default=str)}],
+            temperature=0.2, max_tokens=max(max_tokens, 1500),     # a reasoning model spends part of the budget thinking
+            **({"reasoning_effort": "low"} if "gpt-oss" in config.GROQ_MODEL else {}),
+            **({"response_format": {"type": "json_object"}} if json_mode else {}),
+        )
+        text = resp.choices[0].message.content or ""
+        return json.loads(text) if json_mode else text
+    except Exception as e:
+        log.error("AI call failed: %s", type(e).__name__)
+        code = getattr(e, "status_code", None)
+        if code == 404:
+            raise NoteError(f"The AI model {config.GROQ_MODEL} is no longer available. Set GROQ_MODEL to a current one.") from e
+        if code == 429:
+            raise NoteError("Today's free AI quota is used up. Try again later.") from e
+        raise NoteError("The AI service did not return a usable answer.") from e
 
 
 def build(ticker: str, facts: dict) -> dict:

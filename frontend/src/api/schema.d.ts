@@ -21,6 +21,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Auth
+         * @description Does this browser hold the owner's key? Used to show or hide the private pages.
+         */
+        get: operations["get_auth_auth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings */
+        get: operations["get_settings_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Setups */
+        get: operations["get_setups_setups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search": {
         parameters: {
             query?: never;
@@ -225,6 +279,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stock/{ticker}/debate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Debate */
+        post: operations["post_debate_stock__ticker__debate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Chat */
+        post: operations["post_chat_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stock/{ticker}/odds": {
         parameters: {
             query?: never;
@@ -242,10 +330,302 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Portfolio */
+        get: operations["get_portfolio_portfolio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Position */
+        post: operations["post_position_positions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/positions/{pid}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Close */
+        post: operations["post_close_positions__pid__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/positions/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Position Patch */
+        post: operations["post_position_patch_positions__pid__post"];
+        /** Delete Position */
+        delete: operations["delete_position_positions__pid__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Alerts */
+        get: operations["get_alerts_alerts_get"];
+        put?: never;
+        /** Post Alert */
+        post: operations["post_alert_alerts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/{aid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Alert */
+        delete: operations["delete_alert_alerts__aid__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Brief */
+        get: operations["get_brief_brief_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brief/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Brief Send */
+        post: operations["post_brief_send_brief_send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AlertIn */
+        AlertIn: {
+            /** Ticker */
+            ticker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "above" | "below";
+            /** Level */
+            level: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** AlertOut */
+        AlertOut: {
+            /** Id */
+            id: number;
+            /** Market */
+            market: string;
+            /** Ticker */
+            ticker: string;
+            /** Kind */
+            kind: string;
+            /** Level */
+            level: number;
+            /** Note */
+            note: string;
+            /** Active */
+            active: boolean;
+            /** Created At */
+            created_at: string;
+            /** Fired At */
+            fired_at: string | null;
+            /** Fired Price */
+            fired_price: number | null;
+        };
+        /** AuthOut */
+        AuthOut: {
+            /** Required */
+            required: boolean;
+            /** Ok */
+            ok: boolean;
+        };
+        /** BriefAlert */
+        BriefAlert: {
+            /** Ticker */
+            ticker: string;
+            /** Kind */
+            kind: string;
+            /** Level */
+            level: number;
+        };
+        /** BriefMover */
+        BriefMover: {
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            /** Price */
+            price: number;
+            /** Change Pct */
+            change_pct: number;
+        };
+        /** BriefOut */
+        BriefOut: {
+            /** Market */
+            market: string;
+            /** Date */
+            date: string;
+            /** Status */
+            status: string;
+            /** Opens At */
+            opens_at: string;
+            /** Indices */
+            indices: components["schemas"]["BriefMover"][];
+            /** Advancing */
+            advancing: number;
+            /** Declining */
+            declining: number;
+            /** Gainers */
+            gainers: components["schemas"]["BriefMover"][];
+            /** Losers */
+            losers: components["schemas"]["BriefMover"][];
+            /** Setups */
+            setups: components["schemas"]["BriefSetup"][];
+            /** Positions */
+            positions: components["schemas"]["BriefPosition"][];
+            /** Alerts */
+            alerts: components["schemas"]["BriefAlert"][];
+            record: components["schemas"]["BriefRecord"];
+            /** Headlines */
+            headlines: components["schemas"]["NewsItem"][];
+            /** Telegram */
+            telegram: boolean;
+        };
+        /** BriefPosition */
+        BriefPosition: {
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
+            /** Entry */
+            entry: number;
+            /** Stop */
+            stop: number | null;
+            /** Target */
+            target: number | null;
+            /** Price */
+            price: number | null;
+            /** Pnl */
+            pnl: number | null;
+            /** R */
+            r: number | null;
+            /** Paper */
+            paper: boolean;
+        };
+        /** BriefRecord */
+        BriefRecord: {
+            /** N */
+            n: number;
+            /** Paired N */
+            paired_n: number;
+            /** Edge R */
+            edge_r: number | null;
+            /** Edge Low */
+            edge_low: number | null;
+            /** Edge High */
+            edge_high: number | null;
+        };
+        /** BriefSetup */
+        BriefSetup: {
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            /** Setup */
+            setup: string;
+            /** Entry */
+            entry: number;
+            /** Stop */
+            stop: number | null;
+            /** Target */
+            target: number | null;
+            /** Validated */
+            validated: boolean;
+            /** Pending */
+            pending: boolean;
+        };
         /** Bucket */
         Bucket: {
             /** N */
@@ -297,6 +677,56 @@ export interface components {
             /** Candles */
             candles: components["schemas"]["Candle"][];
         };
+        /** ChatIn */
+        ChatIn: {
+            /** Ticker */
+            ticker?: string | null;
+            /**
+             * Market
+             * @default india
+             * @enum {string}
+             */
+            market: "india" | "us";
+            /** Messages */
+            messages: components["schemas"]["ChatMessage"][];
+        };
+        /** ChatMessage */
+        ChatMessage: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+        };
+        /** ChatOut */
+        ChatOut: {
+            /** Answer */
+            answer: string;
+            /** Removed */
+            removed: number;
+            /** Model */
+            model: string;
+        };
+        /** CloseIn */
+        CloseIn: {
+            /** Price */
+            price: number;
+            /**
+             * Reason
+             * @default manual
+             * @enum {string}
+             */
+            reason: "manual" | "stop" | "target";
+            /**
+             * Lesson
+             * @default
+             */
+            lesson: string;
+            /** Mistake */
+            mistake?: string | null;
+        };
         /** Constituent */
         Constituent: {
             /** Ticker */
@@ -326,6 +756,34 @@ export interface components {
             total: number;
             /** Control */
             control: number;
+        };
+        /** DebateOut */
+        DebateOut: {
+            bull: components["schemas"]["DebateSide"];
+            bear: components["schemas"]["DebateSide"];
+            /** Summary */
+            summary: string;
+            /** Agree */
+            agree: string[];
+            /** Clash */
+            clash: string[];
+            /** Check First */
+            check_first: string[];
+            /** Removed */
+            removed: number;
+            /** Model */
+            model: string;
+            /** Cached */
+            cached: boolean;
+            /** Created At */
+            created_at: string;
+        };
+        /** DebateSide */
+        DebateSide: {
+            /** Case */
+            case: string[];
+            /** Wrong If */
+            wrong_if: string;
         };
         /** Evidence */
         Evidence: {
@@ -376,6 +834,34 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** JournalPoint */
+        JournalPoint: {
+            /** At */
+            at: string;
+            /** Ticker */
+            ticker: string;
+            /** R */
+            r: number;
+            /** Total */
+            total: number;
+        };
+        /** JournalStats */
+        JournalStats: {
+            /** N */
+            n: number;
+            /** With R */
+            with_r: number;
+            /** Win Rate */
+            win_rate: number | null;
+            /** Avg R */
+            avg_r: number | null;
+            /** Total R */
+            total_r: number | null;
+            /** Avg Win R */
+            avg_win_r: number | null;
+            /** Avg Loss R */
+            avg_loss_r: number | null;
+        };
         /** LiveSignal */
         LiveSignal: {
             /** Id */
@@ -398,6 +884,11 @@ export interface components {
              * @enum {string}
              */
             category: "intraday" | "short_term" | "long_term";
+            /**
+             * Setup
+             * @default confluence
+             */
+            setup: string;
             /** Timeframe */
             timeframe: string;
             /** Entry */
@@ -515,6 +1006,117 @@ export interface components {
             /** Bands */
             bands: number[][];
         };
+        /** PortfolioOut */
+        PortfolioOut: {
+            /** Open */
+            open: components["schemas"]["PositionOut"][];
+            /** Closed */
+            closed: components["schemas"]["PositionOut"][];
+            /** Open Risk */
+            open_risk: number;
+            /** Open Pnl */
+            open_pnl: number;
+            stats: components["schemas"]["JournalStats"];
+            /** Curve */
+            curve: components["schemas"]["JournalPoint"][];
+            /** By Mistake */
+            by_mistake: {
+                [key: string]: components["schemas"]["JournalStats"];
+            };
+            /** By Setup */
+            by_setup: {
+                [key: string]: components["schemas"]["JournalStats"];
+            };
+            /** Mistakes */
+            mistakes: string[];
+        };
+        /** PositionIn */
+        PositionIn: {
+            /** Ticker */
+            ticker: string;
+            /** Qty */
+            qty: number;
+            /** Entry */
+            entry: number;
+            /** Stop */
+            stop?: number | null;
+            /** Target */
+            target?: number | null;
+            /**
+             * Paper
+             * @default true
+             */
+            paper: boolean;
+            /**
+             * Why
+             * @default
+             */
+            why: string;
+            /** Signal Id */
+            signal_id?: number | null;
+            /** Setup */
+            setup?: string | null;
+        };
+        /** PositionOut */
+        PositionOut: {
+            /** Id */
+            id: number;
+            /** Market */
+            market: string;
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name: string;
+            /** Paper */
+            paper: boolean;
+            /** Qty */
+            qty: number;
+            /** Entry */
+            entry: number;
+            /** Stop */
+            stop: number | null;
+            /** Target */
+            target: number | null;
+            /** Opened At */
+            opened_at: string;
+            /** Setup */
+            setup: string | null;
+            /** Why */
+            why: string;
+            /** Status */
+            status: string;
+            /** Exit Price */
+            exit_price: number | null;
+            /** Closed At */
+            closed_at: string | null;
+            /** Close Reason */
+            close_reason: string | null;
+            /** Lesson */
+            lesson: string;
+            /** Mistake */
+            mistake: string | null;
+            /** Price */
+            price: number | null;
+            /** Pnl */
+            pnl: number | null;
+            /** Pnl Pct */
+            pnl_pct: number | null;
+            /** R */
+            r: number | null;
+            /** Risk */
+            risk: number | null;
+        };
+        /** PositionPatch */
+        PositionPatch: {
+            /** Lesson */
+            lesson?: string | null;
+            /** Mistake */
+            mistake?: string | null;
+            /** Stop */
+            stop?: number | null;
+            /** Target */
+            target?: number | null;
+        };
         /** Quote */
         Quote: {
             /** Ticker */
@@ -567,6 +1169,10 @@ export interface components {
             by_category: {
                 [key: string]: components["schemas"]["Bucket"];
             };
+            /** By Setup */
+            by_setup: {
+                [key: string]: components["schemas"]["SetupRecord"];
+            };
             /** Curve */
             curve: components["schemas"]["CurvePoint"][];
             /** Trades */
@@ -592,6 +1198,13 @@ export interface components {
             /** By Year */
             by_year: {
                 [key: string]: components["schemas"]["ReplaySummary"];
+            };
+            /**
+             * By Setup
+             * @default {}
+             */
+            by_setup: {
+                [key: string]: components["schemas"]["SetupReplay"];
             };
         };
         /** ReplaySummary */
@@ -620,6 +1233,10 @@ export interface components {
             edge_low?: number | null;
             /** Edge High */
             edge_high?: number | null;
+            /** Edge First Half */
+            edge_first_half?: number | null;
+            /** Edge Second Half */
+            edge_second_half?: number | null;
         };
         /** ScanOut */
         ScanOut: {
@@ -650,6 +1267,84 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** SettingsOut */
+        SettingsOut: {
+            /** Owner Required */
+            owner_required: boolean;
+            /** Telegram */
+            telegram: boolean;
+            /** Ai Enabled */
+            ai_enabled: boolean;
+            /** India Universe */
+            india_universe: number;
+            /** Alert Unproven */
+            alert_unproven: boolean;
+        };
+        /** SetupInfo */
+        SetupInfo: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Blurb */
+            blurb: string;
+            /** Validated */
+            validated: boolean;
+            replay?: components["schemas"]["ReplaySummary"] | null;
+        };
+        /** SetupRecord */
+        SetupRecord: {
+            /** Label */
+            label: string;
+            /** Active */
+            active: number;
+            /** Validated */
+            validated: boolean;
+            replay?: components["schemas"]["ReplaySummary"] | null;
+            live: components["schemas"]["Bucket"];
+        };
+        /** SetupReplay */
+        SetupReplay: {
+            /** N */
+            n: number;
+            /**
+             * Target
+             * @default 0
+             */
+            target: number;
+            /**
+             * Stop
+             * @default 0
+             */
+            stop: number;
+            /** Avg R */
+            avg_r?: number | null;
+            /** Avg R Net */
+            avg_r_net?: number | null;
+            /** Control R */
+            control_r?: number | null;
+            /** Edge R */
+            edge_r?: number | null;
+            /** Edge Low */
+            edge_low?: number | null;
+            /** Edge High */
+            edge_high?: number | null;
+            /** Edge First Half */
+            edge_first_half?: number | null;
+            /** Edge Second Half */
+            edge_second_half?: number | null;
+            /** Label */
+            label: string;
+            /** Validated */
+            validated: boolean;
+            /**
+             * By Year
+             * @default {}
+             */
+            by_year: {
+                [key: string]: components["schemas"]["ReplaySummary"];
+            };
+        };
         /** SignalOut */
         SignalOut: {
             /** Id */
@@ -672,6 +1367,11 @@ export interface components {
              * @enum {string}
              */
             category: "intraday" | "short_term" | "long_term";
+            /**
+             * Setup
+             * @default confluence
+             */
+            setup: string;
             /** Timeframe */
             timeframe: string;
             /** Entry */
@@ -738,6 +1438,11 @@ export interface components {
             scanning: boolean;
             /** Ai Enabled */
             ai_enabled: boolean;
+            /**
+             * Owner Required
+             * @default false
+             */
+            owner_required: boolean;
         };
         /** StockOut */
         StockOut: {
@@ -836,6 +1541,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_auth_auth_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_settings_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_setups_setups_get: {
+        parameters: {
+            query?: {
+                market?: "india" | "us";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupInfo"][];
                 };
             };
             /** @description Validation Error */
@@ -1213,6 +2011,74 @@ export interface operations {
             };
         };
     };
+    post_debate_stock__ticker__debate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path: {
+                ticker: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DebateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_chat_chat_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_odds_stock__ticker__odds_get: {
         parameters: {
             query: {
@@ -1236,6 +2102,346 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OddsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portfolio_portfolio_get: {
+        parameters: {
+            query?: {
+                paper?: boolean | null;
+            };
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_position_positions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_close_positions__pid__close_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path: {
+                pid: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_position_patch_positions__pid__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path: {
+                pid: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_position_positions__pid__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path: {
+                pid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alerts_alerts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_alert_alerts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_alert_alerts__aid__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path: {
+                aid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_brief_brief_get: {
+        parameters: {
+            query?: {
+                market?: "india" | "us";
+            };
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_brief_send_brief_send_post: {
+        parameters: {
+            query?: {
+                market?: "india" | "us";
+            };
+            header?: {
+                "x-owner-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

@@ -10,19 +10,19 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import select, text
 from starlette.concurrency import run_in_threadpool
 
-from backend import config, db, replay, universe
+from backend import auth, config, db, replay, universe
 from backend import market_hours as mh
 from backend import schemas as sc
 from backend.db import Session, Signal, utcnow
 from backend.engine import indicators, odds, signals
 from backend.providers import yahoo
-from backend.services import notes, scan, track
+from backend.services import ai, alerts, brief, journal, notes, notify, scan, setups, track
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)  # httpx logs full URLs at INFO, secrets included
@@ -41,10 +41,28 @@ def _tick() -> bool:
         open_ = mh.is_open(m)
         any_open |= open_
         if open_ or scan.eod_due(m):
-            scan.run(m)
+            began = utcnow()
+            if scan.run(m):
+                try:
+                    alerts.announce(m, began)
+                except Exception:
+                    log.exception("Setup announcement failed")
     track.update_open()
     track.update_controls()
     return any_open
+
+
+async def _alert_loop():
+    """Every minute: price alerts, paper trades, and the morning brief when it is time."""
+    while True:
+        try:
+            if any(mh.is_open(m) for m in ("india", "us")):
+                await run_in_threadpool(alerts.check)
+            for m in ("india", "us"):
+                await run_in_threadpool(brief.send_if_due, m)
+        except Exception:
+            log.exception("Alert round failed")
+        await asyncio.sleep(60)
 
 
 async def _loop():
@@ -62,7 +80,7 @@ async def _loop():
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init()
-    tasks = [asyncio.create_task(_loop()), asyncio.create_task(_broadcast())] if config.BACKGROUND else []
+    tasks = [asyncio.create_task(f()) for f in (_loop, _broadcast, _alert_loop)] if config.BACKGROUND else []
     yield
     for t in tasks:
         t.cancel()
@@ -72,7 +90,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="StockSage API", version="2.0.0", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(CORSMiddleware, allow_origins=config.ALLOWED_ORIGINS, allow_methods=["GET", "POST"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=config.ALLOWED_ORIGINS, allow_methods=["GET", "POST", "DELETE"], allow_headers=["*"])
 
 
 # ------------------------------------------------------------ rate limiting
@@ -115,13 +133,31 @@ def get_status(market: MarketQ = "india"):
         "last_scan": db.get_meta(f"last_scan:{market}"),
         "scanning": scan.scanning(market),
         "ai_enabled": bool(config.GROQ_API_KEY),
+        "owner_required": auth.required(),
     }
+
+
+@app.get("/auth", response_model=sc.AuthOut)
+def get_auth(x_owner_token: Annotated[str | None, Header()] = None):
+    """Does this browser hold the owner's key? Used to show or hide the private pages."""
+    return {"required": auth.required(), "ok": auth.check(x_owner_token)}
+
+
+@app.get("/settings", response_model=sc.SettingsOut, dependencies=[auth.Owner])
+def get_settings():
+    return {"owner_required": auth.required(), "telegram": notify.configured(), "ai_enabled": bool(config.GROQ_API_KEY),
+            "india_universe": config.INDIA_UNIVERSE, "alert_unproven": config.ALERT_UNPROVEN}
+
+
+@app.get("/setups", response_model=list[sc.SetupInfo])
+def get_setups(market: MarketQ = "india"):
+    return setups.catalog(market)
 
 
 @app.get("/search", response_model=list[sc.SearchItem])
 def search_universe():
     return [sc.SearchItem(ticker=s.ticker, name=s.name, sector=s.sector, market=m)
-            for m in ("india", "us") for s in universe.stocks(m)]
+            for m in ("india", "us") for s in universe.scan_stocks(m)]
 
 
 # ------------------------------------------------------------ market
@@ -266,11 +302,11 @@ def get_stock_news(ticker: Ticker):
     return {"items": yahoo.stock_news(universe.display_name(ticker), universe.market_of(ticker))}
 
 
-@app.post("/stock/{ticker}/note", response_model=sc.NoteOut, dependencies=[limit("note", 6, 300)])
-def post_note(ticker: Ticker):
+def _facts(ticker: str) -> dict:
+    """Everything an AI may know about a stock. If it is not in here, it may not be said."""
     stock = get_stock(ticker)
     sig = stock["signal"]
-    facts = {
+    return {
         "ticker": ticker, "name": stock["name"], "sector": stock["sector"],
         "market_open": mh.is_open(stock["market"]),
         "quote": {k: v for k, v in (stock["quote"] or {}).items() if k not in ("spark", "as_of")},
@@ -278,10 +314,39 @@ def post_note(ticker: Ticker):
         "fundamentals": {k: v for k, v in yahoo.fundamentals(ticker).items() if k != "summary"},
         "recent_headlines": [{"title": n["title"], "source": n["source"], "published": n["published"]}
                              for n in yahoo.stock_news(stock["name"], stock["market"])],
-        "current_setup": {"direction": sig.direction, "entry": sig.entry, "stop": sig.stop, "target": sig.target} if sig else None,
+        "current_setup": {"direction": sig.direction, "setup": sig.setup, "entry": sig.entry, "stop": sig.stop, "target": sig.target} if sig else None,
+        "engine_track_record": _track_record(stock["market"]),
     }
+
+
+def _track_record(market: str) -> list[dict]:
+    """What each kind of setup has earned in the replay, without the year-by-year detail."""
+    return [{"setup": c["label"], "beat_random_beyond_luck": c["validated"],
+             "replay": {k: v for k, v in (c["replay"] or {}).items() if k not in ("by_year", "label")} or None} for c in setups.catalog(market)]
+
+
+@app.post("/stock/{ticker}/note", response_model=sc.NoteOut, dependencies=[limit("note", 6, 300)])
+def post_note(ticker: Ticker):
+    facts = _facts(ticker)
     try:
         return notes.build(ticker, facts)
+    except notes.NoteError as e:
+        raise HTTPException(503, str(e)) from e
+
+
+@app.post("/stock/{ticker}/debate", response_model=sc.DebateOut, dependencies=[auth.Owner, limit("debate", 4, 300)])
+def post_debate(ticker: Ticker):
+    try:
+        return ai.debate(ticker, _facts(ticker))
+    except notes.NoteError as e:
+        raise HTTPException(503, str(e)) from e
+
+
+@app.post("/chat", response_model=sc.ChatOut, dependencies=[auth.Owner, limit("chat", 20, 300)])
+def post_chat(body: sc.ChatIn):
+    facts = _facts(body.ticker) if body.ticker else {"market_today": brief.build(body.market), "engine_track_record": _track_record(body.market)}
+    try:
+        return ai.chat(facts, [m.model_dump() for m in body.messages])
     except notes.NoteError as e:
         raise HTTPException(503, str(e)) from e
 
@@ -296,6 +361,92 @@ def get_odds(ticker: Ticker,
     if len(daily) < 120:
         raise HTTPException(404, "Not enough price history to simulate.")
     return odds.simulate(daily, entry, stop, target, days)
+
+
+# ------------------------------------------------------------ owner: journal, alerts, brief
+
+@app.get("/portfolio", response_model=sc.PortfolioOut, dependencies=[auth.Owner])
+def get_portfolio(paper: bool | None = None):
+    return journal.portfolio(paper) | {"mistakes": list(journal.MISTAKES)}
+
+
+@app.post("/positions", response_model=sc.PositionOut, dependencies=[auth.Owner, limit("positions", 60, 60)])
+def post_position(body: sc.PositionIn):
+    return journal.view(journal.open_position(body.model_dump()))
+
+
+@app.post("/positions/{pid}/close", response_model=sc.PositionOut, dependencies=[auth.Owner])
+def post_close(pid: int, body: sc.CloseIn):
+    if body.mistake and body.mistake not in journal.MISTAKES:
+        raise HTTPException(422, "Unknown mistake tag.")
+    p = journal.close_position(pid, body.price, body.reason, body.lesson, body.mistake)
+    if not p:
+        raise HTTPException(404, "No open trade with that id.")
+    return journal.view(p)
+
+
+@app.post("/positions/{pid}", response_model=sc.PositionOut, dependencies=[auth.Owner])
+def post_position_patch(pid: int, body: sc.PositionPatch):
+    if body.mistake and body.mistake not in journal.MISTAKES:
+        raise HTTPException(422, "Unknown mistake tag.")
+    with Session() as s:
+        p = s.get(db.Position, pid)
+        if not p:
+            raise HTTPException(404, "No trade with that id.")
+        for k, v in body.model_dump(exclude_unset=True).items():
+            if v is not None:
+                setattr(p, k, v)
+        if p.stop is not None and p.stop >= p.entry:
+            raise HTTPException(422, "The stop must be below the entry.")
+        s.commit()
+        return journal.view(p)
+
+
+@app.delete("/positions/{pid}", dependencies=[auth.Owner])
+def delete_position(pid: int):
+    with Session() as s:
+        p = s.get(db.Position, pid)
+        if not p:
+            raise HTTPException(404, "No trade with that id.")
+        s.delete(p)
+        s.commit()
+    return {"deleted": pid}
+
+
+@app.get("/alerts", response_model=list[sc.AlertOut], dependencies=[auth.Owner])
+def get_alerts():
+    with Session() as s:
+        return list(s.scalars(select(db.Alert).order_by(db.Alert.active.desc(), db.Alert.created_at.desc()).limit(100)))
+
+
+@app.post("/alerts", response_model=sc.AlertOut, dependencies=[auth.Owner, limit("alerts", 30, 60)])
+def post_alert(body: sc.AlertIn):
+    return alerts.create(body.ticker, body.kind, body.level, body.note)
+
+
+@app.delete("/alerts/{aid}", dependencies=[auth.Owner])
+def delete_alert(aid: int):
+    with Session() as s:
+        a = s.get(db.Alert, aid)
+        if not a:
+            raise HTTPException(404, "No alert with that id.")
+        s.delete(a)
+        s.commit()
+    return {"deleted": aid}
+
+
+@app.get("/brief", response_model=sc.BriefOut, dependencies=[auth.Owner, limit("brief", 20, 60)])
+def get_brief(market: MarketQ = "india"):
+    return brief.build(market) | {"telegram": notify.configured()}
+
+
+@app.post("/brief/send", dependencies=[auth.Owner, limit("send", 3, 300)])
+def post_brief_send(market: MarketQ = "india"):
+    if not notify.configured():
+        raise HTTPException(503, "Telegram is not set up. Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.")
+    if not notify.send(brief.text(brief.build(market))):
+        raise HTTPException(502, "Telegram did not accept the message. Check the bot token and chat id.")
+    return {"sent": True}
 
 
 # ------------------------------------------------------------ live prices

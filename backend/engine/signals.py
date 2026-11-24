@@ -42,6 +42,7 @@ class Setup:
     target: float | None
     evidence_for: list[Evidence] = field(default_factory=list)
     evidence_against: list[Evidence] = field(default_factory=list)
+    setup: str = "confluence"       # which strategy produced it
 
     def to_dict(self) -> dict:
         return asdict(self)

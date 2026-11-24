@@ -18,7 +18,30 @@ export type Note = S['NoteOut'];
 export type Status = S['Status'];
 export type NewsItem = S['NewsItem'];
 export type Fundamentals = S['Fundamentals'];
+export type Portfolio = S['PortfolioOut'];
+export type Position = S['PositionOut'];
+export type PositionIn = S['PositionIn'];
+export type CloseIn = S['CloseIn'];
+export type AlertOut = S['AlertOut'];
+export type AlertIn = S['AlertIn'];
+export type Brief = S['BriefOut'];
+export type DebateOut = S['DebateOut'];
+export type ChatIn = S['ChatIn'];
+export type ChatOut = S['ChatOut'];
+export type SetupInfo = S['SetupInfo'];
+export type SetupRecord = S['SetupRecord'];
+export type ReplaySummary = S['ReplaySummary'];
 export type Timeframe = '1D' | '1W' | '1M' | '6M' | '2Y';
+
+const KEY = 'ss.owner';
+/** The owner's key, kept on this device only. Empty when running locally without one. */
+export const ownerToken = () => {
+  try {
+    return localStorage.getItem(KEY) ?? '';
+  } catch {
+    return '';
+  }
+};
 
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -30,8 +53,9 @@ export class ApiError extends Error {
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const token = ownerToken();
   try {
-    res = await fetch(BASE + path, init);
+    res = await fetch(BASE + path, token ? { ...init, headers: { ...init?.headers, 'X-Owner-Token': token } } : init);
   } catch {
     throw new ApiError("Can't reach the StockSage server.", 0);
   }
@@ -44,6 +68,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const t = encodeURIComponent;
+const send = <T>(path: string, method: string, body?: unknown) =>
+  call<T>(path, { method, ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
 const MIN = 60_000;
 const retry = (n: number, e: Error) => n < 2 && !(e instanceof ApiError && e.status >= 400 && e.status < 500);
 
@@ -116,3 +142,41 @@ export function subscribePrices(m: Market, onPrices: (p: Record<string, { price:
     ws?.close();
   };
 }
+
+// ---- owner: unlock, journal, alerts, brief, AI
+
+export const useAuth = () => useQuery(q<S['AuthOut']>(['auth'], '/auth', false, { staleTime: 60_000 }));
+
+export function useUnlock() {
+  const qc = useQueryClient();
+  return (token: string) => {
+    try {
+      if (token) localStorage.setItem(KEY, token);
+      else localStorage.removeItem(KEY);
+    } catch {
+      /* private mode: the key lasts until the tab closes only if the browser allows it */
+    }
+    qc.invalidateQueries();
+  };
+}
+
+export const useSetups = (m: Market) => useQuery(q<SetupInfo[]>(['setups', m], `/setups?market=${m}`, false, { staleTime: 10 * MIN }));
+export const usePortfolio = (paper?: boolean) =>
+  useQuery(q<Portfolio>(['portfolio', paper ?? 'all'], `/portfolio${paper === undefined ? '' : `?paper=${paper}`}`, 30_000));
+export const useAlerts = () => useQuery(q<AlertOut[]>(['alerts'], '/alerts', 30_000));
+export const useBrief = (m: Market) => useQuery(q<Brief>(['brief', m], `/brief?market=${m}`, 5 * MIN));
+export const useSettings = () => useQuery(q<S['SettingsOut']>(['settings'], '/settings', false));
+
+function useWrite<V, R>(fn: (v: V) => Promise<R>, refresh: string[]) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: fn, onSuccess: () => refresh.forEach((k) => qc.invalidateQueries({ queryKey: [k] })) });
+}
+
+export const useOpenPosition = () => useWrite((b: PositionIn) => send<Position>('/positions', 'POST', b), ['portfolio', 'brief']);
+export const useClosePosition = () => useWrite((v: { id: number; body: CloseIn }) => send<Position>(`/positions/${v.id}/close`, 'POST', v.body), ['portfolio', 'brief']);
+export const useDeletePosition = () => useWrite((id: number) => send<unknown>(`/positions/${id}`, 'DELETE'), ['portfolio', 'brief']);
+export const useAddAlert = () => useWrite((b: AlertIn) => send<AlertOut>('/alerts', 'POST', b), ['alerts', 'brief']);
+export const useDeleteAlert = () => useWrite((id: number) => send<unknown>(`/alerts/${id}`, 'DELETE'), ['alerts', 'brief']);
+export const useSendBrief = (m: Market) => useMutation({ mutationFn: () => send<{ sent: boolean }>(`/brief/send?market=${m}`, 'POST') });
+export const useDebate = (k: string) => useMutation({ mutationFn: () => send<DebateOut>(`/stock/${t(k)}/debate`, 'POST'), mutationKey: ['debate', k] });
+export const useChat = () => useMutation({ mutationFn: (b: ChatIn) => send<ChatOut>('/chat', 'POST', b) });

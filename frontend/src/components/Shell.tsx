@@ -1,15 +1,18 @@
-import { LayoutDashboard, Scale, Search, Star } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Scale, Search, Star, Sunrise } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useSearchList, useStatus } from '../api/client';
 import { symbol, until } from '../lib/format';
 import { useApp, useNow } from '../state';
 import { Segmented } from './bits';
+import ChatDock from './ChatDock';
 
 const NAV = [
-  ['/desk', 'Desk', LayoutDashboard],
-  ['/watchlist', 'Watchlist', Star],
-  ['/record', 'Record', Scale],
+  ['/desk', 'Desk', 'Desk', LayoutDashboard],
+  ['/brief', 'Morning brief', 'Brief', Sunrise],
+  ['/journal', 'Journal', 'Journal', BookOpen],
+  ['/watchlist', 'Watchlist', 'Watch', Star],
+  ['/record', 'Record', 'Record', Scale],
 ] as const;
 
 export function Mark({ size = 30 }: { size?: number }) {
@@ -118,13 +121,13 @@ export default function Shell() {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[200px] flex-col border-r border-line bg-deep/70 p-4 lg:flex">
         <Link to="/" className="mb-8 flex items-center gap-2.5 px-1 pt-1"><Mark /><span className="display text-[19px]">StockSage</span></Link>
         <nav className="flex flex-col gap-1" aria-label="Main">
-          {NAV.map(([to, text, Icon]) => (
+          {NAV.map(([to, text, , Icon]) => (
             <NavLink key={to} to={to} className={({ isActive }) => `${item(isActive)} h-11`}>
               {({ isActive }) => (<><Icon size={18} className={isActive ? 'text-gold' : ''} aria-hidden />{text}</>)}
             </NavLink>
           ))}
         </nav>
-        <p className="mt-auto px-1 text-[13px] leading-snug text-ink3">Delayed data from Yahoo Finance. For your own research, not advice.</p>
+        <p className="mt-auto px-1 text-[13px] leading-snug text-ink3">Delayed data from Yahoo Finance. For your own research, not advice. <Link to="/about" className="underline hover-ink">About and limits</Link></p>
       </aside>
 
       <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur-xl sm:px-7">
@@ -139,15 +142,19 @@ export default function Shell() {
         </div>
       </header>
 
-      <main id="main" className="mx-auto max-w-[1480px] px-4 pt-6 pb-28 sm:px-7 lg:pb-16"><Outlet /></main>
+      <main id="main" className="mx-auto max-w-[1480px] px-4 pt-6 pb-28 sm:px-7 lg:pb-16">
+        <Outlet />
+        <p className="mt-14 text-[13px] text-ink3 lg:hidden">Delayed data, for your own research, not advice. <Link to="/about" className="underline">About and limits</Link></p>
+      </main>
+      <ChatDock />
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-deep/92 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden" aria-label="Main">
-        {NAV.map(([to, text, Icon]) => (
-          <NavLink key={to} to={to} className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] ${isActive ? 'text-gold' : 'text-ink2'}`}>
-            <Icon size={20} aria-hidden />{text}
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-line bg-deep/92 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden" aria-label="Main">
+        {NAV.map(([to, , short, Icon]) => (
+          <NavLink key={to} to={to} className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${isActive ? 'text-gold' : 'text-ink2'}`}>
+            <Icon size={20} aria-hidden />{short}
           </NavLink>
         ))}
-        <button type="button" onClick={() => setFind(true)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] text-ink2"><Search size={20} aria-hidden />Find</button>
+        <button type="button" onClick={() => setFind(true)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] text-ink2"><Search size={20} aria-hidden />Find</button>
       </nav>
       {find && <Palette onClose={() => setFind(false)} />}
     </div>

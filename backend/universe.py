@@ -10,9 +10,11 @@ from pathlib import Path
 
 import requests
 
+from backend import config
+
 log = logging.getLogger(__name__)
-_SNAPSHOT = Path(__file__).parent / "data" / "nifty50.csv"
-_NSE_URL = "https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv"
+_DATA = Path(__file__).parent / "data"
+_NSE_URL = "https://nsearchives.nseindia.com/content/indices/ind_nifty{n}list.csv"
 _REFRESH_SECONDS = 7 * 24 * 3600
 
 
@@ -68,7 +70,7 @@ def _short(name: str) -> str:
     return name.replace(" Ltd.", "").replace(" Limited", "").strip()
 
 
-def parse_nifty(text: str) -> list[Stock]:
+def parse_nifty(text: str, size: int = 50) -> list[Stock]:
     rows = []
     for r in csv.DictReader(io.StringIO(text.lstrip("﻿"))):
         symbol = (r.get("Symbol") or "").strip()
@@ -77,44 +79,65 @@ def parse_nifty(text: str) -> list[Stock]:
         industry = (r.get("Industry") or "").strip()
         rows.append(Stock(f"{symbol}.NS", _short(r["Company Name"]), _SECTOR.get(industry, industry)))
     # An HTML error page or a truncated download must never replace a good list.
-    if not 45 <= len(rows) <= 55:
-        raise ValueError(f"unexpected Nifty 50 size: {len(rows)}")
+    if not size * 0.9 <= len(rows) <= size * 1.1:
+        raise ValueError(f"unexpected Nifty {size} size: {len(rows)}")
     return rows
 
 
 _lock = threading.Lock()
-_nifty: list[Stock] = parse_nifty(_SNAPSHOT.read_text(encoding="utf-8-sig"))
+
+
+def _snapshot(n: int) -> list[Stock]:
+    return parse_nifty((_DATA / f"nifty{n}.csv").read_text(encoding="utf-8-sig"), n)
+
+
+_nifty: list[Stock] = _snapshot(50)
+# What the scan covers: the Nifty 50 by default, or a wider index when asked for (see config).
+_wide: list[Stock] = _nifty if config.INDIA_UNIVERSE == 50 else _snapshot(config.INDIA_UNIVERSE)
 _checked = 0.0
 
 
 def refresh_nifty(force: bool = False) -> bool:
-    """Pull the current list from NSE at most weekly. Keeps the last good list on failure."""
-    global _nifty, _checked
+    """Pull the current lists from NSE at most weekly. Keeps the last good list on failure."""
+    global _nifty, _wide, _checked
     if not force and time.time() - _checked < _REFRESH_SECONDS:
         return False
     _checked = time.time()
+    sizes = [50] if config.INDIA_UNIVERSE == 50 else [50, config.INDIA_UNIVERSE]
+    fresh = {}
     try:
-        resp = requests.get(_NSE_URL, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-        resp.raise_for_status()
-        fresh = parse_nifty(resp.text)
+        for n in sizes:
+            resp = requests.get(_NSE_URL.format(n=n), timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            resp.raise_for_status()
+            fresh[n] = parse_nifty(resp.text, n)
     except Exception as e:
-        log.warning("Nifty 50 refresh failed, keeping current list: %s", e)
+        log.warning("Index refresh failed, keeping current lists: %s", e)
         return False
     with _lock:
-        _nifty = fresh
+        _nifty = fresh[50]
+        _wide = _nifty if config.INDIA_UNIVERSE == 50 else fresh[config.INDIA_UNIVERSE]
     return True
 
 
 def stocks(market: str) -> list[Stock]:
+    """The names shown on the desk and used as the random control: Nifty 50 and 30 US giants."""
     if market == "india":
         with _lock:
             return list(_nifty)
     return [Stock(*s) for s in _US]
 
 
+def scan_stocks(market: str) -> list[Stock]:
+    """Everything the scan looks at. Wider than the desk when STOCKSAGE_INDIA_UNIVERSE is set."""
+    if market == "india":
+        with _lock:
+            return list(_wide)
+    return stocks(market)
+
+
 def lookup(ticker: str) -> Stock | None:
     for m in ("india", "us"):
-        for s in stocks(m):
+        for s in scan_stocks(m):
             if s.ticker == ticker:
                 return s
     return None

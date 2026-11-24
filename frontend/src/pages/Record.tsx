@@ -1,7 +1,8 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { Link } from 'react-router';
-import { useRecord, useReplay, type RecordOut } from '../api/client';
+import { useRecord, useReplay, useSetups, type RecordOut } from '../api/client';
 import { Empty, Heading, Problem, Segmented } from '../components/bits';
+import SetupTable from '../components/SetupTable';
 import { CATEGORY, dayMonth, rText, STATUS, symbol, tone } from '../lib/format';
 import { useApp } from '../state';
 
@@ -113,6 +114,7 @@ const edgeOf = (b: RecordOut['overall']): Edge => ({ n: b.paired_n || b.n, mine:
 function LiveRecord({ engine }: { engine: 'v1' | 'v2' }) {
   const { market } = useApp();
   const { data: r, error, refetch } = useRecord(market, engine);
+  const { data: catalog } = useSetups(market);
   if (error) return <Problem error={error} retry={() => refetch()} />;
   if (!r) return <div className="skeleton h-72" />;
   const since = r.since ? dayMonth(r.since) : null;
@@ -123,6 +125,13 @@ function LiveRecord({ engine }: { engine: 'v1' | 'v2' }) {
           : `${r.active} open now${since ? `, running since ${since}` : ''}. Every setup is followed on real prices to its stop, target or time limit. Nothing is removed.`
       } />
       <Curve r={r} />
+      {engine === 'v2' && (catalog?.length ?? 0) > 0 && (
+        <section>
+          <Heading>Which kinds of setup earn their place</Heading>
+          <p className="mb-4 max-w-[70ch] text-ink2">A kind of setup counts as beating random only if, in years of replay, it was better than random stocks beyond luck, in both halves of the period and after costs. Until then it is an experiment, and the card says so.</p>
+          <SetupTable rows={catalog!.map((c) => ({ key: c.key, label: c.label, validated: c.validated, replay: c.replay, live: r.by_setup[c.key]?.live, active: r.by_setup[c.key]?.active }))} />
+        </section>
+      )}
       {r.overall.n > 0 ? (
         <section>
           <Heading>Trades</Heading>
@@ -161,6 +170,12 @@ function ReplayView() {
     <div className="space-y-9">
       <Hero e={{ n: o.n, mine: o.avg_r, control: o.control_r, edge: o.edge_r, low: o.edge_low, high: o.edge_high }}
         caption={`Today's engine run over ${r.stocks} stocks, ${r.start.slice(0, 4)} to ${r.end.slice(0, 4)}, seeing only the past at each step. After costs the average is ${rText(o.avg_r_net)}. It uses today's index members, which flatters both sides a little.`} />
+      {Object.keys(r.by_setup).length > 0 && (
+        <section>
+          <Heading>Every kind of setup, same rules, same period</Heading>
+          <SetupTable showLive={false} rows={Object.entries(r.by_setup).map(([key, v]) => ({ key, label: v.label, validated: v.validated, replay: v }))} />
+        </section>
+      )}
       <section>
         <Heading>Year by year and by horizon</Heading>
         <div className="panel overflow-x-auto">

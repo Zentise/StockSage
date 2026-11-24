@@ -13,7 +13,7 @@ from sqlalchemy import select
 from backend import market_hours as mh
 from backend import universe
 from backend.db import Session, Signal, get_meta, set_meta, utcnow
-from backend.engine import indicators, signals
+from backend.engine import indicators, signals, strategies
 from backend.providers import yahoo
 
 log = logging.getLogger(__name__)
@@ -46,14 +46,18 @@ def index_direction(market: str) -> bool | None:
     return None
 
 
-def evaluate_stock(ticker: str, market: str, open_: bool, index_up: bool | None = None) -> list[signals.Setup]:
+def evaluate_stock(ticker: str, market: str, open_: bool, index_up: bool | None = None,
+                   intraday: bool = True) -> list[signals.Setup]:
     found = []
     daily = yahoo.candles(ticker, "2y", "1d")
     if not daily.empty:
         s = signals.evaluate(ticker, daily, mh.session_fraction(market))
         if s:
             found.append(s)
-    if open_ and not daily.empty:
+        # The strategies trade finished daily bars, so they only speak once the session is over.
+        if not open_:
+            found += strategies.evaluate(ticker, daily)
+    if open_ and intraday and not daily.empty:
         x = indicators.compute(daily)
         # Only stocks that move enough in a day to pay for a same-day trade.
         if x and x["atr"] and x["atr"] / x["price"] > 0.022:
@@ -72,7 +76,8 @@ def record(market: str, setups: list[signals.Setup], open_: bool, now: datetime 
     with Session() as db:
         live = list(db.scalars(select(Signal).where(Signal.market == market, Signal.engine == ENGINE, Signal.status == "active")))
         for s in setups:
-            same = [x for x in live if x.ticker == s.ticker and (x.category == "intraday") == (s.category == "intraday")]
+            same = [x for x in live if x.ticker == s.ticker and x.setup == s.setup
+                    and (x.category == "intraday") == (s.category == "intraday")]
             if any(x.direction == s.direction for x in same):
                 continue
             for old in same:
@@ -80,7 +85,7 @@ def record(market: str, setups: list[signals.Setup], open_: bool, now: datetime 
                 live.remove(old)
             row = Signal(
                 engine=ENGINE, market=market, ticker=s.ticker, name=universe.display_name(s.ticker),
-                direction=s.direction, category=s.category, timeframe=s.timeframe,
+                direction=s.direction, category=s.category, setup=s.setup, timeframe=s.timeframe,
                 entry=s.entry, stop=s.stop, target=s.target,
                 evidence_for=[vars(e) for e in s.evidence_for],
                 evidence_against=[vars(e) for e in s.evidence_against],
@@ -117,9 +122,10 @@ def run(market: str) -> int | None:
         open_ = mh.is_open(market)
         index_up = index_direction(market) if open_ else None
         setups, failed = [], 0
-        for st in universe.stocks(market):
+        desk = {s.ticker for s in universe.stocks(market)}
+        for st in universe.scan_stocks(market):
             try:
-                setups += evaluate_stock(st.ticker, market, open_, index_up)
+                setups += evaluate_stock(st.ticker, market, open_, index_up, intraday=st.ticker in desk)
             except Exception:
                 failed += 1
                 log.exception("Scan failed for %s", st.ticker)

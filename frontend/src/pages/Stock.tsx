@@ -1,9 +1,11 @@
-import { ArrowLeft, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, Bell, BookOpen, Sparkles, Star } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
-import { useFundamentals, useNote, useStatus, useStock, useStockNews, type Evidence, type Note, type StockOut } from '../api/client';
+import { useAddAlert, useFundamentals, useNote, useStatus, useStock, useStockNews, type Evidence, type Note, type StockOut } from '../api/client';
 import { Change, Direction, Heading, Problem, Tug } from '../components/bits';
 import Chart from '../components/Chart';
+import Debate from '../components/Debate';
+import { useIsOwner } from '../components/OwnerGate';
 import Planner, { startingLevels, type Levels } from '../components/Planner';
 import { ago, big, CATEGORY, dayMonth, marketOf, money, priceDay, rText, STATUS, symbol, tone } from '../lib/format';
 import { useApp } from '../state';
@@ -132,6 +134,22 @@ function AiNote({ ticker }: { ticker: string }) {
   );
 }
 
+/** Ring me when it gets there: one number, one tap. */
+function QuickAlert({ ticker, price }: { ticker: string; price: number | null | undefined }) {
+  const [open, setOpen] = useState(false);
+  const [level, setLevel] = useState('');
+  const add = useAddAlert();
+  const kind = price != null && +level < price ? 'below' : 'above';
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="btn btn-line press !px-3" aria-label="Set a price alert"><Bell size={18} aria-hidden /></button>;
+  return (
+    <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate({ ticker, kind, level: +level, note: "" }, { onSuccess: () => { setOpen(false); setLevel(''); } }); }}>
+      <input autoFocus className="field !w-28" inputMode="decimal" placeholder={price ? String(Math.round(price)) : 'Price'} value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Alert price" />
+      <button type="submit" className="btn btn-gold press" disabled={!(+level > 0) || add.isPending}>Alert {kind === 'below' ? 'at or below' : 'at or above'}</button>
+      {add.error && <span role="alert" className="text-[13px] text-downtext">{add.error.message}</span>}
+    </form>
+  );
+}
+
 function News({ ticker }: { ticker: string }) {
   const { data, error } = useStockNews(ticker);
   return (
@@ -151,6 +169,7 @@ function StockBody({ s }: { s: StockOut }) {
   useEffect(() => setLevels((l) => l ?? startingLevels(s)), [s]);
   const drawn = useMemo(() => (levels && levels.stop < levels.entry && levels.entry < levels.target ? levels : null), [levels]);
   const starred = watch.includes(s.ticker);
+  const owner = useIsOwner();
   return (
     <div className="space-y-9">
       <header>
@@ -165,6 +184,13 @@ function StockBody({ s }: { s: StockOut }) {
               <div className="num text-[clamp(28px,4vw,40px)] leading-none">{money(price, s.ticker)}</div>
               <div className="mt-1.5"><Change v={change} className="text-[16px]" /> <span className="text-[13px] text-ink3">{priceDay(s.quote?.as_of, s.ticker)}</span></div>
             </div>
+            {owner && !s.ticker.startsWith('^') && (
+              <>
+                <QuickAlert ticker={s.ticker} price={price} />
+                <Link className="btn btn-line press !px-3" aria-label="Log a trade in the journal"
+                  to={`/journal?ticker=${encodeURIComponent(s.ticker)}&entry=${drawn?.entry ?? price ?? ''}&stop=${drawn?.stop ?? ''}&target=${drawn?.target ?? ''}${s.signal ? `&setup=${s.signal.setup}` : ''}`}><BookOpen size={18} aria-hidden /></Link>
+              </>
+            )}
             <button type="button" onClick={() => toggleWatch(s.ticker)} aria-pressed={starred} className="btn btn-line press !px-3" aria-label={starred ? 'Remove from watchlist' : 'Add to watchlist'}>
               <Star size={18} className={starred ? 'fill-gold text-gold' : ''} aria-hidden />
             </button>
@@ -177,6 +203,7 @@ function StockBody({ s }: { s: StockOut }) {
       </div>
       {levels && !s.ticker.startsWith('^') && <Planner stock={s} levels={levels} setLevels={setLevels} />}
       <AiNote ticker={s.ticker} />
+      {!s.ticker.startsWith('^') && <Debate ticker={s.ticker} />}
       <div className="grid items-start gap-6 lg:grid-cols-2"><Business ticker={s.ticker} /><News ticker={s.ticker} /></div>
       {s.history.length > 0 && (
         <section>

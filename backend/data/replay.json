@@ -1,0 +1,200 @@
+{
+ "india": {
+  "market": "india",
+  "ran": "2026-11-24",
+  "stocks": 50,
+  "start": "2022-12-08",
+  "end": "2026-11-05",
+  "overall": {
+   "n": 1507,
+   "target": 410,
+   "stop": 715,
+   "avg_r": 0.144,
+   "avg_r_net": 0.081,
+   "control_r": 0.168,
+   "edge_r": -0.024,
+   "edge_low": -0.076,
+   "edge_high": 0.03
+  },
+  "by_category": {
+   "short_term": {
+    "n": 738,
+    "target": 145,
+    "stop": 309,
+    "avg_r": 0.123,
+    "avg_r_net": 0.041,
+    "control_r": 0.09,
+    "edge_r": 0.033,
+    "edge_low": -0.033,
+    "edge_high": 0.101
+   },
+   "long_term": {
+    "n": 769,
+    "target": 265,
+    "stop": 406,
+    "avg_r": 0.164,
+    "avg_r_net": 0.118,
+    "control_r": 0.244,
+    "edge_r": -0.08,
+    "edge_low": -0.16,
+    "edge_high": 0.012
+   }
+  },
+  "by_year": {
+   "2022": {
+    "n": 26,
+    "target": 0,
+    "stop": 25,
+    "avg_r": -0.94,
+    "avg_r_net": -0.993,
+    "control_r": -0.637,
+    "edge_r": -0.303,
+    "edge_low": -0.303,
+    "edge_high": -0.303
+   },
+   "2023": {
+    "n": 408,
+    "target": 165,
+    "stop": 152,
+    "avg_r": 0.487,
+    "avg_r_net": 0.424,
+    "control_r": 0.583,
+    "edge_r": -0.096,
+    "edge_low": -0.198,
+    "edge_high": 0.028
+   },
+   "2024": {
+    "n": 347,
+    "target": 89,
+    "stop": 171,
+    "avg_r": 0.058,
+    "avg_r_net": 0.006,
+    "control_r": 0.064,
+    "edge_r": -0.006,
+    "edge_low": -0.099,
+    "edge_high": 0.094
+   },
+   "2025": {
+    "n": 397,
+    "target": 87,
+    "stop": 193,
+    "avg_r": 0.049,
+    "avg_r_net": -0.02,
+    "control_r": 0.037,
+    "edge_r": 0.012,
+    "edge_low": -0.05,
+    "edge_high": 0.095
+   },
+   "2026": {
+    "n": 329,
+    "target": 69,
+    "stop": 174,
+    "avg_r": 0.009,
+    "avg_r_net": -0.059,
+    "control_r": -0.014,
+    "edge_r": 0.023,
+    "edge_low": -0.084,
+    "edge_high": 0.128
+   }
+  }
+ },
+ "us": {
+  "market": "us",
+  "ran": "2026-11-24",
+  "stocks": 30,
+  "start": "2022-12-07",
+  "end": "2026-11-04",
+  "overall": {
+   "n": 962,
+   "target": 275,
+   "stop": 472,
+   "avg_r": 0.169,
+   "avg_r_net": 0.156,
+   "control_r": 0.207,
+   "edge_r": -0.038,
+   "edge_low": -0.142,
+   "edge_high": 0.064
+  },
+  "by_category": {
+   "short_term": {
+    "n": 464,
+    "target": 89,
+    "stop": 202,
+    "avg_r": 0.088,
+    "avg_r_net": 0.072,
+    "control_r": 0.141,
+    "edge_r": -0.053,
+    "edge_low": -0.181,
+    "edge_high": 0.082
+   },
+   "long_term": {
+    "n": 498,
+    "target": 186,
+    "stop": 270,
+    "avg_r": 0.244,
+    "avg_r_net": 0.234,
+    "control_r": 0.269,
+    "edge_r": -0.025,
+    "edge_low": -0.15,
+    "edge_high": 0.114
+   }
+  },
+  "by_year": {
+   "2022": {
+    "n": 16,
+    "target": 2,
+    "stop": 13,
+    "avg_r": -0.561,
+    "avg_r_net": -0.57,
+    "control_r": 0.096,
+    "edge_r": -0.657,
+    "edge_low": -0.657,
+    "edge_high": -0.657
+   },
+   "2023": {
+    "n": 253,
+    "target": 86,
+    "stop": 104,
+    "avg_r": 0.422,
+    "avg_r_net": 0.408,
+    "control_r": 0.344,
+    "edge_r": 0.078,
+    "edge_low": -0.071,
+    "edge_high": 0.206
+   },
+   "2024": {
+    "n": 239,
+    "target": 76,
+    "stop": 125,
+    "avg_r": 0.195,
+    "avg_r_net": 0.181,
+    "control_r": 0.268,
+    "edge_r": -0.073,
+    "edge_low": -0.298,
+    "edge_high": 0.151
+   },
+   "2025": {
+    "n": 257,
+    "target": 58,
+    "stop": 133,
+    "avg_r": 0.028,
+    "avg_r_net": 0.015,
+    "control_r": 0.105,
+    "edge_r": -0.077,
+    "edge_low": -0.207,
+    "edge_high": 0.051
+   },
+   "2026": {
+    "n": 197,
+    "target": 53,
+    "stop": 97,
+    "avg_r": 0.057,
+    "avg_r_net": 0.045,
+    "control_r": 0.101,
+    "edge_r": -0.044,
+    "edge_low": -0.346,
+    "edge_high": 0.26
+   }
+  }
+ }
+}

@@ -212,3 +212,6 @@ marimo/_lsp/
 __marimo__/
 
 skills/
+
+# Local database
+stocksage.db*

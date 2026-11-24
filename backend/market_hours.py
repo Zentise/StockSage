@@ -1,157 +1,153 @@
-"""Market session helpers with holiday awareness."""
+"""Trading sessions from real exchange calendars (holidays, half days), not hand-kept lists.
 
-import os
-from datetime import date, datetime
+BSE's calendar (XBOM) stands in for NSE: they share trading holidays, and it matched every
+NSE session of 2026 when this was written. Calendars only know published years, so past
+their last date we fall back to weekdays and report `calendar_ok = False`.
+"""
+
+from datetime import UTC, date, datetime, time, timedelta
+from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-import holidays
+import exchange_calendars as xc
+import pandas as pd
+
+from backend.config import EXTRA_HOLIDAYS
+
+UTC = UTC
+TZ = {"india": ZoneInfo("Asia/Kolkata"), "us": ZoneInfo("America/New_York")}
+_CODE = {"india": "XBOM", "us": "XNYS"}
+_HOURS = {"india": (time(9, 15), time(15, 30)), "us": (time(9, 30), time(16, 0))}
 
 
-def _parse_custom_holidays(env_name: str) -> set[date]:
-    raw = os.getenv(env_name, "").strip()
-    parsed: set[date] = set()
-    if not raw:
-        return parsed
+@lru_cache(maxsize=2)
+def _calendar(market: str):
+    return xc.get_calendar(_CODE[market], start="2023-01-02")
 
-    for item in raw.split(","):
-        item = item.strip()
-        if not item:
-            continue
+
+@lru_cache(maxsize=2)
+def _extra(market: str) -> frozenset[date]:
+    out = set()
+    for item in EXTRA_HOLIDAYS[market].split(","):
         try:
-            parsed.add(date.fromisoformat(item))
+            out.add(date.fromisoformat(item.strip()))
         except ValueError:
-            # Ignore malformed entries so one bad date does not break startup.
             continue
-    return parsed
+    return frozenset(out)
 
 
-# NSE exchange-specific trading holidays NOT covered by the national holidays library.
-# The `holidays` library for India only covers ~3 national holidays (Republic Day,
-# Independence Day, Gandhi Jayanti). NSE observes ~15 additional exchange holidays.
-# Update this list each year when NSE publishes its official holiday schedule.
-_NSE_EXCHANGE_HOLIDAYS: set[date] = {
-    # 2025
-    date(2025, 2, 26),   # Maha Shivratri
-    date(2025, 3, 14),   # Holi
-    date(2025, 4, 10),   # Ram Navami
-    date(2025, 4, 14),   # Dr. Ambedkar Jayanti / Mahavir Jayanti
-    date(2025, 4, 18),   # Good Friday
-    date(2025, 5, 1),    # Maharashtra Day
-    date(2025, 10, 20),  # Diwali – Laxmi Pujan
-    date(2025, 10, 21),  # Diwali – Balipratipada
-    date(2025, 11, 5),   # Gurunanak Jayanti
-    # 2026 — Official NSE holiday list
-    date(2026, 1, 15),   # Municipal Corporation Election – Maharashtra
-    date(2026, 1, 26),   # Republic Day
-    date(2026, 3, 3),    # Holi
-    date(2026, 3, 26),   # Shri Ram Navami
-    date(2026, 3, 31),   # Shri Mahavir Jayanti
-    date(2026, 4, 3),    # Good Friday
-    date(2026, 4, 14),   # Dr. Baba Saheb Ambedkar Jayanti
-    date(2026, 5, 1),    # Maharashtra Day
-    date(2026, 5, 28),   # Bakri Id
-    date(2026, 6, 26),   # Muharram
-    date(2026, 9, 14),   # Ganesh Chaturthi
-    date(2026, 10, 2),   # Mahatma Gandhi Jayanti
-    date(2026, 10, 20),  # Dussehra
-    date(2026, 11, 10),  # Diwali – Balipratipada
-    date(2026, 11, 24),  # Prakash Gurpurb Sri Guru Nanak Dev
-    date(2026, 12, 25),  # Christmas
-}
+def covered(market: str, day: date) -> bool:
+    return day <= _calendar(market).last_session.date()
 
 
-def is_indian_trading_holiday(day: date | None = None) -> bool:
-    day = day or datetime.now(ZoneInfo("Asia/Kolkata")).date()
+def session_bounds(market: str, day: date) -> tuple[datetime, datetime] | None:
+    """Open and close in UTC for that day, or None when the exchange is shut."""
+    if day in _extra(market):
+        return None
+    if covered(market, day):
+        cal = _calendar(market)
+        ts = pd.Timestamp(day)
+        if ts < cal.first_session or not cal.is_session(ts):
+            return None
+        return (
+            cal.session_open(ts).to_pydatetime().astimezone(UTC),
+            cal.session_close(ts).to_pydatetime().astimezone(UTC),
+        )
     if day.weekday() >= 5:
-        return True
-
-    # Exchange-specific holidays (Holi, Diwali, Mahashivratri, etc.)
-    if day in _NSE_EXCHANGE_HOLIDAYS:
-        return True
-
-    # User-configured extra holidays (STOCKSAGE_NSE_HOLIDAYS=YYYY-MM-DD,...)
-    custom_holidays = _parse_custom_holidays("STOCKSAGE_NSE_HOLIDAYS")
-    if day in custom_holidays:
-        return True
-
-    india_holidays = holidays.country_holidays("IN", years=[day.year])
-    return day in india_holidays
+        return None
+    o, c = _HOURS[market]
+    tz = TZ[market]
+    return datetime.combine(day, o, tz).astimezone(UTC), datetime.combine(day, c, tz).astimezone(UTC)
 
 
-def is_indian_market_open(now: datetime | None = None) -> bool:
-    now = now or datetime.now(ZoneInfo("Asia/Kolkata"))
-    if is_indian_trading_holiday(now.date()):
-        return False
-    market_open = now.replace(hour=9, minute=15, second=0, microsecond=0)
-    market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
-    return market_open <= now <= market_close
+def is_session(market: str, day: date) -> bool:
+    return session_bounds(market, day) is not None
 
 
-# NYSE exchange-specific trading holidays.
-# The `holidays` library covers some US federal holidays but may not match
-# the exact NYSE observed-date rules (e.g. Friday before / Monday after).
-# Update this list each year when NYSE publishes its official holiday schedule.
-_NYSE_HOLIDAYS: set[date] = {
-    # 2026
-    date(2026, 1, 1),    # New Year's Day
-    date(2026, 1, 19),   # Martin Luther King, Jr. Day
-    date(2026, 2, 16),   # Washington's Birthday
-    date(2026, 4, 3),    # Good Friday
-    date(2026, 5, 25),   # Memorial Day
-    date(2026, 6, 19),   # Juneteenth National Independence Day
-    date(2026, 7, 3),    # Independence Day (observed)
-    date(2026, 9, 7),    # Labor Day
-    date(2026, 11, 26),  # Thanksgiving Day
-    date(2026, 12, 25),  # Christmas Day
-    # 2027
-    date(2027, 1, 1),    # New Year's Day
-    date(2027, 1, 18),   # Martin Luther King, Jr. Day
-    date(2027, 2, 15),   # Washington's Birthday
-    date(2027, 3, 26),   # Good Friday
-    date(2027, 5, 31),   # Memorial Day
-    date(2027, 6, 18),   # Juneteenth (observed)
-    date(2027, 7, 5),    # Independence Day (observed)
-    date(2027, 9, 6),    # Labor Day
-    date(2027, 11, 25),  # Thanksgiving Day
-    date(2027, 12, 24),  # Christmas Day (observed)
-    # 2028
-    date(2028, 1, 17),   # Martin Luther King, Jr. Day
-    date(2028, 2, 21),   # Washington's Birthday
-    date(2028, 4, 14),   # Good Friday
-    date(2028, 5, 29),   # Memorial Day
-    date(2028, 6, 19),   # Juneteenth National Independence Day
-    date(2028, 7, 4),    # Independence Day
-    date(2028, 9, 4),    # Labor Day
-    date(2028, 11, 23),  # Thanksgiving Day
-    date(2028, 12, 25),  # Christmas Day
-}
+def local_date(market: str, now: datetime | None = None) -> date:
+    return (now or datetime.now(UTC)).astimezone(TZ[market]).date()
 
 
-def is_us_trading_holiday(day: date | None = None) -> bool:
-    day = day or datetime.now(ZoneInfo("America/New_York")).date()
-    if day.weekday() >= 5:
-        return True
-
-    # NYSE exchange-specific holidays
-    if day in _NYSE_HOLIDAYS:
-        return True
-
-    # User-configured extra holidays (STOCKSAGE_NYSE_HOLIDAYS=YYYY-MM-DD,...)
-    custom_holidays = _parse_custom_holidays("STOCKSAGE_NYSE_HOLIDAYS")
-    if day in custom_holidays:
-        return True
-
-    return False
+def is_open(market: str, now: datetime | None = None) -> bool:
+    now = now or datetime.now(UTC)
+    b = session_bounds(market, local_date(market, now))
+    return bool(b and b[0] <= now < b[1])
 
 
-def is_us_market_open(now: datetime | None = None) -> bool:
-    now = now or datetime.now(ZoneInfo("America/New_York"))
-    if is_us_trading_holiday(now.date()):
-        return False
-    market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
-    market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-    return market_open <= now <= market_close
+def last_session(market: str, now: datetime | None = None) -> date:
+    """Most recent session that has at least opened."""
+    now = now or datetime.now(UTC)
+    d = local_date(market, now)
+    for _ in range(15):
+        b = session_bounds(market, d)
+        if b and b[0] <= now:
+            return d
+        d -= timedelta(days=1)
+    return d
 
 
-def is_market_open(market: str) -> bool:
-    return is_indian_market_open() if market == "india" else is_us_market_open()
+def last_closed_session(market: str, now: datetime | None = None) -> date:
+    now = now or datetime.now(UTC)
+    d = local_date(market, now)
+    for _ in range(15):
+        b = session_bounds(market, d)
+        if b and b[1] <= now:
+            return d
+        d -= timedelta(days=1)
+    return d
+
+
+def next_open(market: str, now: datetime | None = None) -> datetime:
+    now = now or datetime.now(UTC)
+    d = local_date(market, now)
+    for _ in range(15):
+        b = session_bounds(market, d)
+        if b and b[0] > now:
+            return b[0]
+        d += timedelta(days=1)
+    return now
+
+
+def sessions_after(market: str, day: date, n: int) -> date:
+    """The n-th session strictly after `day`."""
+    d, left = day, n
+    while left > 0:
+        d += timedelta(days=1)
+        if is_session(market, d):
+            left -= 1
+    return d
+
+
+def session_fraction(market: str, now: datetime | None = None) -> float:
+    """How much of today's session has elapsed (1.0 when closed)."""
+    now = now or datetime.now(UTC)
+    b = session_bounds(market, local_date(market, now))
+    if not b or not b[0] <= now < b[1]:
+        return 1.0
+    return max(0.02, (now - b[0]) / (b[1] - b[0]))
+
+
+def status(market: str, now: datetime | None = None) -> dict:
+    now = now or datetime.now(UTC)
+    today = local_date(market, now)
+    b = session_bounds(market, today)
+    open_ = bool(b and b[0] <= now < b[1])
+    if open_:
+        reason = "Open"
+    elif today.weekday() >= 5:
+        reason = "Weekend"
+    elif not b:
+        reason = "Exchange holiday"
+    elif now < b[0]:
+        reason = "Opens later today"
+    else:
+        reason = "Closed for the day"
+    return {
+        "market": market,
+        "open": open_,
+        "reason": reason,
+        "session_date": last_session(market, now).isoformat(),
+        "opens_at": next_open(market, now).isoformat(),
+        "closes_at": b[1].isoformat() if open_ else None,
+        "calendar_ok": covered(market, today + timedelta(days=14)),
+    }

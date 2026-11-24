@@ -16,7 +16,7 @@ Render and Vercel rebuild by themselves when you push to the branch they watch (
 
 ## Part 1. Run it on your computer
 
-You need Python 3.11, Node 20+ and git.
+You need Python 3.11, Node 22+ and git.
 
 ```bash
 git checkout v2
